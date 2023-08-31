@@ -1,0 +1,64 @@
+ereader
+-------
+Goals:
+- Beautiful paginated book render
+- Be Fast (Folliate is ridiculously slow)
+- Ultimately have zero dependencies
+  Implement base functionality at a high level than drill down into the dependencies
+- Learn more about rust
+- Speech to text for a audio book experience
+- The ability to search/buy different ebooks
+- Cohesive cross platform experience
+- Interoperate with different services (Amazon, Apple, Google Play) -- for drm
+  and such
+- Accessibility -> <meta property="schema:accessibilityControl"></meta>
+
+Epub file format:
+- zip file (but with .epub extention)
+- xhtml/html/svg files (along with media assets)
+- Required:
+    - mimetype
+    - ./META-INF/container.xml
+      - <rootfile full-path=="" media-type="application/oebps-package+xml"/>
+- content.opf (doesn't necessarily need to be "content")
+  - <metadata></metadata>  -> metadata
+  - <manifest></manifest>  -> maps items to their paths
+  - <spine></spine>        -> ordering for the items
+  - <guide></guide>        -> type="toc", type="cover", type="text",
+    type="start", type="copyright-page" type="thumbimagesstandard"
+- toc.ntx (Table of contents)
+  -> there's also a nav.xhtml toc.html and a toc.xhtml
+  - <head></head>          -> metadata
+  - <docTitle></docTitlte> -> book title
+  - <navmap></navmap>      -> tree of <navpoint/>
+  - <navpoint>
+      <!-- other navpoint(s) --->
+      <navLabel><text>{id -- usually section or chapter name} </text></navLabel>
+      <content src="absolute path to content (can also be within a html file)"/>
+    </navpoint>
+
+- encryption and drm
+  - AES encryption of content files (user needs to input key)
+  - META-INF/encryption.xml
+  - might entail license server interaction
+  - Possible indicators:
+    - META-INF/license*
+    - META-INF/rights.xml
+    - META-INF/DRM_license.dat
+    - META-INF/encryption.xml
+      - enc:EncryptedData, enc:CipherData
+        - used for font obfuscation -> https://idpf.org/epub/20/spec/FontManglingSpec_2.0.1_draft.htm
+
+- fixed vs reflowable layout:
+  - not explicitly stated
+  - check the css for absolute positioning or fixed dimensions
+    - "position: fixed" or "position: absolute"
+    - width, height in px values
+  - maybe if in toc.ncx the <meta name="dbt:totalPageCount" content=""> contains
+    a value other than zero
+
+Paginated rendering:
+- extract <p> and <img>, etc, etc
+- apply css to extracted nodes
+- with <img>, reference the path in question -- which would be relative to the
+  path inside the epub file
