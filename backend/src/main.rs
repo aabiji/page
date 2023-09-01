@@ -1,4 +1,6 @@
+mod extract;
 
 fn main() {
-    println!("Hello world from read!");
+    extract::set_root_cwd();
+    extract::extract_zipfile("books/Dune.epub", "Dune");
 }
