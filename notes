@@ -4,9 +4,9 @@ Goals:
 - Beautiful paginated book render
 - Be Fast (Folliate is ridiculously slow)
 - Ultimately have zero dependencies
-  Implement base functionality at a high level than drill down into the dependencies
+  Implement base functionality at a high level then drill down into the dependencies
 - Learn more about rust
-- Speech to text for a audio book experience
+- Speech to text for an audio book experience
 - The ability to search/buy different ebooks
 - Cohesive cross platform experience
 - Interoperate with different services (Amazon, Apple, Google Play) -- for drm
