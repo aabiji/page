@@ -3,5 +3,8 @@ package main
 import "github.com/aabiji/read/epub"
 
 func main() {
-    _ = epub.New("books/Dune.epub")
+    _, err := epub.New("books/Dune.epub")
+    if err != nil {
+        panic(err)
+    }
 }
