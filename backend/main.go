@@ -1,9 +1,7 @@
 package main
 
-import (
-    "github.com/aabiji/read/epub"
-)
+import "github.com/aabiji/read/epub"
 
 func main() {
-    epub.Test()
+    _ = epub.New("books/Dune.epub")
 }
