@@ -1,26 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"github.com/aabiji/read/epub"
-	"io/ioutil"
+    "fmt"
+	//"github.com/aabiji/read/epub"
 )
 
 func main() {
-	files, err := ioutil.ReadDir("books")
-	if err != nil {
-		panic(err)
-	}
-	for _, file := range files {
-		if !file.IsDir() {
-			e, err := epub.New("books/" + file.Name())
-			if err != nil {
-				panic(err)
-			}
-
-			fmt.Println(file.Name())
-			e.Debug()
-			fmt.Println()
-		}
-	}
+    fmt.Println("Hello world from our ebook reader backend!")
 }

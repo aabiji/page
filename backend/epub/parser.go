@@ -32,8 +32,11 @@ type Epub struct {
 }
 
 func New(filename string) (Epub, error) {
-	e := Epub{Name: getFileBase(filename)}
+    if !strings.Contains(filename, ".epub") {
+        return Epub{}, errors.New("Invalid epub file")
+    }
 
+	e := Epub{Name: getFileBase(filename)}
 	err := e.unzip(filename)
 	if err != nil {
 		return Epub{}, err
@@ -68,6 +71,14 @@ func (e *Epub) Debug() {
 	fmt.Printf("Identifier: %s\n", e.Info.Identifier)
 }
 
+// Path to filename inside the extracted epub's directory
+func (e *Epub) path(filename ...string) string {
+    storageDir := "BOOKS"
+    paths := []string{storageDir, e.Name}
+    paths = append(paths, filename...)
+    return filepath.Join(paths...)
+}
+
 func (e *Epub) unzip(filename string) error {
 	archive, err := zip.OpenReader(filename)
 	if err != nil {
@@ -76,11 +87,8 @@ func (e *Epub) unzip(filename string) error {
 	defer archive.Close()
 
 	for _, file := range archive.File {
-		filePath := filepath.Join(e.Name, file.Name)
+        filePath := e.path(file.Name)
 
-		if !strings.HasPrefix(filePath, filepath.Clean(e.Name)+string(os.PathSeparator)) {
-			continue // invalid file path
-		}
 		if file.FileInfo().IsDir() {
 			os.MkdirAll(filePath, os.ModePerm)
 			continue
@@ -114,7 +122,7 @@ func (e *Epub) unzip(filename string) error {
 }
 
 func (e *Epub) parseContainer() error {
-	path := filepath.Join(e.Name, "META-INF", "container.xml")
+	path := e.path("META-INF", "container.xml")
 
 	file, err := os.ReadFile(path)
 	if err != nil {
@@ -136,7 +144,7 @@ func (e *Epub) parseContainer() error {
 }
 
 func (e *Epub) parseContent() error {
-	path := filepath.Join(e.Name, e.contentFilename)
+	path := e.path(e.contentFilename)
 
 	file, err := os.ReadFile(path)
 	if err != nil {
