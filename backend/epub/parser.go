@@ -1,54 +1,44 @@
 package epub
 
 import (
-	"archive/zip"
-	"encoding/xml"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-// Get the filename without the extention or leading directories.
-// ex.
-// '/path/to/file.txt' becomes 'file'
-func getFileBase(filename string) string {
-	i := 0
-	parts := strings.Split(filename, string(os.PathSeparator))
-	if len(parts) > 0 {
-		i = len(parts) - 1
-	}
-	return strings.Split(parts[i], ".")[0]
-}
-
 type Epub struct {
-	Name            string
-	Info            Metadata
-	Files           []string
-	CoverPath       string
-	contentFilename string
+	Name                string
+	Info                Metadata
+	Files               []string
+	CoverImagePath      string
+	TableOfContents     [][2]string
+	IsFixedLayout       bool
+	tableOfContentsPath string
+	contentFilename     string
 }
 
 func New(filename string) (Epub, error) {
-    if !strings.Contains(filename, ".epub") {
-        return Epub{}, errors.New("Invalid epub file")
-    }
+	if !strings.Contains(filename, ".epub") {
+		return Epub{}, errors.New("Invalid epub file")
+	}
 
 	e := Epub{Name: getFileBase(filename)}
-	err := e.unzip(filename)
-	if err != nil {
+
+	if err := unzip(filename, e.bookPath()); err != nil {
 		return Epub{}, err
 	}
-
-	err = e.parseContainer()
-	if err != nil {
+	if err := e.verifyMimetype(); err != nil {
 		return Epub{}, err
 	}
-
-	err = e.parseContent()
-	if err != nil {
+	if err := e.parseContainer(); err != nil {
+		return Epub{}, err
+	}
+	if err := e.parseContent(); err != nil {
+		return Epub{}, err
+	}
+	if err := e.parseTableOfContents(); err != nil {
 		return Epub{}, err
 	}
 
@@ -58,7 +48,7 @@ func New(filename string) (Epub, error) {
 func (e *Epub) Debug() {
 	fmt.Printf("%s by %s in %s\n", e.Info.Title, e.Info.Author, e.Info.Date)
 	fmt.Printf("Description: %s\n", e.Info.Description)
-	fmt.Printf("Cover: %s\n", e.CoverPath)
+	fmt.Printf("Cover image: %s\n", e.CoverImagePath)
 	fmt.Printf("Files: %v\n", e.Files)
 	fmt.Printf("Subjects: %v\n", e.Info.Subjects)
 	fmt.Printf("Publisher: %s\n", e.Info.Publisher)
@@ -69,68 +59,50 @@ func (e *Epub) Debug() {
 	fmt.Printf("Rights: %s\n", e.Info.Rights)
 	fmt.Printf("Contributor: %s\n", e.Info.Contributor)
 	fmt.Printf("Identifier: %s\n", e.Info.Identifier)
+	fmt.Println("Table of contents: ")
+	for _, l := range e.TableOfContents {
+		fmt.Printf("%s : %s \n", l[0], l[1])
+	}
 }
 
-// Path to filename inside the extracted epub's directory
-func (e *Epub) path(filename ...string) string {
-    storageDir := "BOOKS"
-    paths := []string{storageDir, e.Name}
-    paths = append(paths, filename...)
-    return filepath.Join(paths...)
+// Path to a file inside the extracted epub file directory
+func (e *Epub) bookPath(files ...string) string {
+	storageDirectory := "BOOKS"                // arbbitruary storage location
+	path := []string{storageDirectory, e.Name} // BOOKS/<BOOK_NAME>
+
+	temp := strings.Split(e.contentFilename, "/")
+	internalDirectories := temp[0 : len(temp)-1]
+	path = append(path, internalDirectories...)
+
+	for _, f := range files {
+		pathParts := strings.Split(f, "/")
+		for _, p := range pathParts {
+			if !Contains(path, p) {
+				path = append(path, p)
+			}
+		}
+	}
+
+	return filepath.Join(path...)
 }
 
-func (e *Epub) unzip(filename string) error {
-	archive, err := zip.OpenReader(filename)
+func (e *Epub) verifyMimetype() error {
+	path := e.bookPath("mimetype")
+
+	mimetype, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
-	defer archive.Close()
 
-	for _, file := range archive.File {
-        filePath := e.path(file.Name)
-
-		if file.FileInfo().IsDir() {
-			os.MkdirAll(filePath, os.ModePerm)
-			continue
-		}
-
-		err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm) // create parent directory
-		if err != nil {
-			return err
-		}
-
-		dest, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, file.Mode())
-		if err != nil {
-			return err
-		}
-
-		extractedFile, err := file.Open()
-		if err != nil {
-			return err
-		}
-
-		_, err = io.Copy(dest, extractedFile)
-		if err != nil {
-			return err
-		}
-
-		dest.Close()
-		extractedFile.Close()
+	if string(mimetype) != "application/epub+zip" {
+		return errors.New("Invalid epub file")
 	}
 
 	return nil
 }
 
 func (e *Epub) parseContainer() error {
-	path := e.path("META-INF", "container.xml")
-
-	file, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	var c Container
-	err = xml.Unmarshal(file, &c)
+	c, err := parseXML[Container](e.bookPath("META-INF", "container.xml"))
 	if err != nil {
 		return err
 	}
@@ -143,47 +115,80 @@ func (e *Epub) parseContainer() error {
 	return nil
 }
 
+func (e *Epub) getCoverImagePath(p Package, items map[string]string) {
+	for _, r := range p.Guide.References {
+		if r.Type == "cover" {
+			e.CoverImagePath = e.bookPath(r.Path)
+			break
+		}
+	}
+
+	// If there's no references in the guide node check if the meta nodes
+	if e.CoverImagePath == "" {
+		for _, m := range p.Metadata.Meta {
+			if m.Name == "cover" {
+				e.CoverImagePath = m.Content
+				break
+			}
+		}
+	}
+
+	// If the result from searching the meta nodes isn't a file
+	// use the result as key to get a file
+	if !strings.Contains(e.CoverImagePath, ".") {
+		e.CoverImagePath = e.bookPath(items[e.CoverImagePath])
+	} else {
+		e.CoverImagePath = e.bookPath(e.CoverImagePath)
+	}
+}
+
 func (e *Epub) parseContent() error {
-	path := e.path(e.contentFilename)
-
-	file, err := os.ReadFile(path)
+	p, err := parseXML[Package](e.bookPath(e.contentFilename))
 	if err != nil {
 		return err
 	}
 
-	var p Package
-	err = xml.Unmarshal(file, &p)
-	if err != nil {
-		return err
-	}
-
+	// Get the list of ebook files
 	items := make(map[string]string)
 	for _, i := range p.Manifest.Items {
 		items[i.Id] = i.Path
 	}
 
 	for _, i := range p.Spine.ITemRefs {
-		e.Files = append(e.Files, items[i.Ref])
-	}
-
-	for _, r := range p.Guide.References {
-		if r.Type == "cover" {
-			e.CoverPath = r.Path
-		}
-	}
-
-	if e.CoverPath == "" { // no references in <guide></guide>
-		for _, m := range p.Metadata.Meta {
-			if m.Name == "cover" {
-				e.CoverPath = m.Content
-			}
-		}
-	}
-
-	if !strings.Contains(e.CoverPath, ".") { // not a file
-		e.CoverPath = items[e.CoverPath]
+		e.Files = append(e.Files, e.bookPath(items[i.Ref]))
 	}
 
 	e.Info = p.Metadata
+	e.getCoverImagePath(p, items)
+	e.tableOfContentsPath = e.bookPath(items[p.Spine.Toc])
+
+	return nil
+}
+
+func (e *Epub) assembleTableOfContents(points []NavPoint) [][2]string {
+	links := [][2]string{}
+	for _, n := range points {
+		path := e.bookPath(n.Content.Source)
+		links = append(links, [2]string{n.Label.Text, path})
+
+		links = append(links, e.assembleTableOfContents(n.Children)...)
+	}
+	return links
+}
+
+func (e *Epub) parseTableOfContents() error {
+	t, err := parseXML[NCX](e.tableOfContentsPath)
+	if err != nil {
+		return err
+	}
+
+	for _, m := range t.Head.Metadata {
+		if m.Name == "dtb:totalPageCount" || m.Name == "dtb:maxPageNumber" && m.Content != "0" {
+			e.IsFixedLayout = true
+			break
+		}
+	}
+
+	e.TableOfContents = e.assembleTableOfContents(t.Map.NavPoints)
 	return nil
 }

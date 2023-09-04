@@ -43,8 +43,7 @@ content.opf structure:
       <dc:relation></dc:relation>
       <dc:coverage></dc:coverage>
       <dc:contributor></dc:contributor>
-      <dc:rights></dc:rights>
-      <dc:language></dc:language>
+      <dc:rights></dc:rights> <dc:language></dc:language>
       <dc:identifier id=""></dc:identifier>
     </metadata>
     <manifest>
@@ -126,4 +125,65 @@ type Package struct {
 	Manifest Manifest `xml:"manifest"`
 	Spine    Spine    `xml:"spine"`
 	Guide    Guide    `xml:"guide"`
+}
+
+/*
+toc.ncx structure:
+  <ncx xmlns="" version="">
+    <head>
+      <meta name="" content="" />
+      ...
+    </head>
+    <docTitle>
+      <text></text>
+    </docTitle>
+    <navMap>
+      <navPoint>
+        <navPoint id="" playOrder="">
+        <navLabel><text></text></navLabel>
+        <content src="" />
+        ... (navPoint)
+      </navPoint>
+      ...
+    </navMap>
+  </ncx>
+*/
+
+type DocTitle struct {
+	XMLName xml.Name `xml:"docTitle"`
+	Text    string   `xml:"text"`
+}
+
+type Head struct {
+	Metadata []Meta `xml:"meta"`
+}
+
+type NavLabel struct {
+	XMLName xml.Name `xml:"navLabel"`
+	Text    string   `xml:"text"`
+}
+
+type Content struct {
+	XMLName xml.Name `xml:"content"`
+	Source  string   `xml:"src,attr"`
+}
+
+type NavPoint struct {
+	XMLName   xml.Name   `xml:"navPoint"`
+	Id        string     `xml:"id,attr"`
+	PlayOrder string     `xml:"playOrder,attr"`
+	Label     NavLabel   `xml:"navLabel"`
+	Content   Content    `xml:"content"`
+	Children  []NavPoint `xml:"navPoint"`
+}
+
+type NavMap struct {
+	XMLName   xml.Name   `xml:"navMap"`
+	NavPoints []NavPoint `xml:"navPoint"`
+}
+
+type NCX struct {
+	Head  Head     `xml:"head"`
+	Title DocTitle `xml:"docTitle"`
+	Map   NavMap   `xml:"navMap"`
 }
