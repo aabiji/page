@@ -1,10 +1,9 @@
 package main
 
 import (
-	"fmt"
-	//"github.com/aabiji/read/epub"
+    "github.com/aabiji/read/server"
 )
 
 func main() {
-	fmt.Println("hello world!")
+    server.Run("localhost:8080")
 }
