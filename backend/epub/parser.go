@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+// The directory where the epub files will be extracted into
+var STORAGE_DIRECTORY = "BOOKS"
+
 type Epub struct {
 	Name                string
 	Info                Metadata
@@ -67,8 +70,7 @@ func (e *Epub) Debug() {
 
 // Path to a file inside the extracted epub file directory
 func (e *Epub) bookPath(files ...string) string {
-	storageDirectory := "BOOKS"                // arbbitruary storage location
-	path := []string{storageDirectory, e.Name} // BOOKS/<BOOK_NAME>
+	path := []string{STORAGE_DIRECTORY, e.Name} // BOOKS/<BOOK_NAME>
 
 	temp := strings.Split(e.contentFilename, "/")
 	internalDirectories := temp[0 : len(temp)-1]
@@ -183,9 +185,11 @@ func (e *Epub) parseTableOfContents() error {
 	}
 
 	for _, m := range t.Head.Metadata {
-		if m.Name == "dtb:totalPageCount" || m.Name == "dtb:maxPageNumber" && m.Content != "0" {
-			e.IsFixedLayout = true
-			break
+		if m.Name == "dtb:totalPageCount" || m.Name == "dtb:maxPageNumber" {
+			if m.Content != "0" {
+				e.IsFixedLayout = true
+				break
+			}
 		}
 	}
 
