@@ -2,20 +2,13 @@ package server
 
 import (
 	"fmt"
+    "github.com/aabiji/read/epub"
 	"github.com/gorilla/mux"
-	"github.com/rs/cors"
+    "github.com/rs/cors"
 	"log"
 	"net/http"
 	"time"
 )
-
-func fileEnableCORS(fs http.Handler) http.HandlerFunc {
-	// returns a handler that allows cors when serving files over http
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		fs.ServeHTTP(w, r)
-	}
-}
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("got / request")
@@ -23,21 +16,25 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 
 func handleGreeting(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	fmt.Fprintf(w, "Hello %s\n", vars["name"])
+    path := fmt.Sprintf("epub/tests/%s.epub", vars["bookName"])
+
+    e, err := epub.New(path)
+	if err != nil {
+        fmt.Fprintf(w, "%s\n", err.Error())
+        return
+	}
+
+    fmt.Fprintf(w, "%v", e.Files)
 }
 
 func Run(addr string) {
-	// Handling routes
 	router := mux.NewRouter()
-	router.HandleFunc("/{name}", handleGreeting).Methods("GET")
+	router.HandleFunc("/{bookName}", handleGreeting).Methods("GET")
 	router.HandleFunc("/", handleRoot).Methods("GET")
 	corsRouter := cors.Default().Handler(router)
 
-	// Serving static files
-	d := "BOOKS"
-	p := "/static/"
-	fs := http.FileServer(http.Dir(d))
-	router.PathPrefix(p).Handler(http.StripPrefix(p, fileEnableCORS(fs)))
+    storage := Storage{LocalPath: "BOOKS", NetPath: "/static/"}
+    storage.Mount(router)
 
 	fmt.Printf("Running server on http://%s\n", addr)
 	server := &http.Server{

@@ -9,7 +9,8 @@ import (
 )
 
 // The directory where the epub files will be extracted into
-var STORAGE_DIRECTORY = "BOOKS"
+// set by Storage struct in the server module
+var STORAGE_DIRECTORY string
 
 type Epub struct {
 	Name                string
