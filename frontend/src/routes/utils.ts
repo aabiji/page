@@ -1,9 +1,18 @@
-export async function call_api(url: string, text: boolean = true) {
+export async function call_api(url: string, payload: object = {}): Promise<any> {
+    const response = await fetch(url, {
+        method: "GET", // change to POST
+        mode: "cors",
+        //body: JSON.stringify(payload),
+    });
+    return response.text(); // change to json
+}
+
+export async function download_file(url: string): Promise<string> {
     const response = await fetch(url, {
         method: "GET",
         mode: "cors",
     });
-    return text ? await response.text() : response.json();
+    return response.text();
 }
 
 export function get_content_type(file_url: string): DOMParserSupportedType {

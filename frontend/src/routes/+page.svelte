@@ -1,19 +1,25 @@
 <script lang="ts">
     import { onMount } from "svelte";
+
     import { Epub } from "./epub";
+    import { call_api } from "./utils";
+
+    function render_book(book_name: string, div: HTMLElement) {
+        call_api(`http://localhost:8080/${book_name}`).then((data: string) => {
+            let temp = data.slice(1, data.length - 1); // remove '[' and ']'
+            let files = temp.split(" ");
+            let e = new Epub(book_name,`http://localhost:8080/${book_name}`, files, div);
+            e.render();
+        });
+    }
 
     onMount(() => {
-        let c = document.getElementById("book-view");
-        // actually get files:
-        //let c = content.slice(1, content.length - 1); // remove '[' and ']'
-        //let filepaths = c.split(" ");
-        let e = new Epub("Dune","http://localhost:8080/Dune",["BOOKS/Dune/titlepage.xhtml"],c);
-        e.render_book();
+        render_book("Dune", document.getElementById("book-view")!);
     });
 </script>
 
 <div>
-    <h1> ebook reader </h1>
+    <p> ebook reader </p>
     <hr>
     <div id="book-view"></div>
 </div>
