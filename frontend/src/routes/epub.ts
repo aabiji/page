@@ -2,16 +2,14 @@ import * as utils from "./utils";
 
 export class Epub {
     name: string;
-    url: string;
     files: string[];
     container: HTMLElement;
     content_type: DOMParserSupportedType;
     attributes: object; // attribute names for the different content types
 
-    constructor(name: string, base_url: string, files: string[], container_div: HTMLElement) {
+    constructor(name: string, files: string[], container_div: HTMLElement) {
         this.name = name;
         this.files = files;
-        this.url = base_url;
         this.container = container_div;
         this.content_type = utils.get_content_type(this.files[0]);
         this.attributes = {
@@ -31,7 +29,9 @@ export class Epub {
             }
         }
 
-        switch (node.nodeName) {
+        console.log(node);
+
+        switch (node.nodeName.toLowerCase()) {
         case this.get_attr("img"):
             let href = node.getAttribute(this.get_attr("href"));
             let real_href = utils.static_file_url(`${this.name}/${href}`);
@@ -39,14 +39,21 @@ export class Epub {
             img.src = real_href;
             return img;
 
+        case "a":
+            let a = document.createElement("a");
+            a.innerHTML = node.innerHTML;
+            a.href = node.getAttribute(this.get_attr("href"))!;
+            return a;
+
         case "p":
         case "h1": case "h2": case "h3": case "h4": case "h5": case "h6":
             let text = document.createElement(node.nodeName);
             text.appendChild(document.createTextNode(node.innerHTML));
             return text;
-        }
 
-        return undefined; // TODO: Unrecognized node: div ...
+        default:
+            return undefined; // TODO: Unrecognized node: div ...
+        }
     }
 
     private render_node(node: Element) {
@@ -66,6 +73,7 @@ export class Epub {
         // Render each xhtml/html page:
         for (let file of this.files) {
             let url = utils.static_file_url(file);
+
             utils.download_file(url).then((content: string) => {
                 const doc = new DOMParser().parseFromString(content, this.content_type);
                 this.render_node(doc.body);

@@ -8,13 +8,13 @@
         call_api(`http://localhost:8080/${book_name}`).then((data: string) => {
             let temp = data.slice(1, data.length - 1); // remove '[' and ']'
             let files = temp.split(" ");
-            let e = new Epub(book_name,`http://localhost:8080/${book_name}`, files, div);
+            let e = new Epub(book_name, files, div);
             e.render();
         });
     }
 
     onMount(() => {
-        render_book("Dune", document.getElementById("book-view")!);
+        render_book("AnimalFarm", document.getElementById("book-view")!);
     });
 </script>
 
