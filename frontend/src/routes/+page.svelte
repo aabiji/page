@@ -21,7 +21,7 @@
 <div>
     <p> ebook reader </p>
     <hr>
-    <div id="book-view"></div>
+    <div class="book-view" id="book-view"></div>
 </div>
 
 <style>
