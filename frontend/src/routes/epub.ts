@@ -7,7 +7,13 @@ export class Epub {
     content_type: DOMParserSupportedType;
     attributes: object; // attribute names for the different content types
 
+    css_promises: Promise<void>[];
+    page_promises: Promise<string>[];
+
     constructor(name: string, files: string[], container_div: HTMLElement) {
+        this.css_promises = [];
+        this.page_promises = [];
+
         this.name = name;
         this.files = files;
         this.container = container_div;
@@ -71,47 +77,60 @@ export class Epub {
     // of the book ??? (for efficiency reasons)
     private apply_page_css(meta_tags: HTMLCollection, doc: Document) {
         for (let i = 0; i < meta_tags.length; i++) {
-            const node = meta_tags[i];
-            if (node.nodeName.toLowerCase() != "link" || node.rel != "stylesheet") {
-                continue;
-            }
+            let node = meta_tags[i];
+            if (node.nodeName.toLowerCase() != "link") continue;
+            if ((node as HTMLLinkElement).rel != "stylesheet") continue;
 
-            let css_url = node.href.replace(`${window.location.origin}/`, "");
+            let css_url = (node as HTMLLinkElement).href.replace(`${window.location.origin}/`, "");
             css_url = utils.static_file_url(`${this.name}/${css_url}`);
 
-            utils.download_file(css_url).then((css: string) => {
+            const p = utils.download_file(css_url).then((css: string) => {
                 let style = document.createElement("style");
                 style.textContent += css;
                 doc.head.appendChild(style);
             });
+            this.css_promises.push(p);
         }
     }
 
-    private render_page(content: string) {
-        let doc = document.implementation.createHTMLDocument();
-        const parsed_doc = new DOMParser().parseFromString(content, this.content_type);
-        this.process_node(parsed_doc.body, doc.body);
-
+    private encapsulate_page(doc: Document) {
         let iframe = document.createElement("iframe");
         iframe.srcdoc = doc.documentElement.innerHTML;
-        iframe.onload = () => {
+        iframe.onload = () => { // Resize iframe height to fit content
             let h = iframe.contentWindow!.document.documentElement.scrollHeight;
             iframe.style.height = `${h}px`;
         }
-
         this.container.appendChild(iframe);
-        
-        // FIXME: the css is not being applied to the actual iframe in this.container
-        this.apply_page_css(parsed_doc.head.children, iframe.contentWindow!.document);
+   }
+
+    private render_page(content: string) {
+        const parsed_doc = new DOMParser().parseFromString(content, this.content_type);
+
+        let doc = document.implementation.createHTMLDocument();
+        this.process_node(parsed_doc.body, doc.body);
+
+        this.apply_page_css(parsed_doc.head.children, doc);
+        // Wait until all the css files have been downloaded to process the resulting document.
+        Promise.all(this.css_promises).then(() => {
+            this.encapsulate_page(doc)
+            this.css_promises = [];
+        });
     }
 
     render() {
-        // FIXME: we have this problem where the files are being rendered out of
-        // order. This is because the files don't finish downloading in
-        // chronological order ...
-        for (let file of this.files) {
+        for (let i = 0; i < this.files.length; i++) {
+            const file = this.files[i];
             let url = utils.static_file_url(file);
-            utils.download_file(url).then((content: string) => this.render_page(content));
+            const p = utils.download_file(url).then((content: string) => content );
+            this.page_promises.push(p);
         }
+
+        // Wait until all the html files have been downloaded to render the pages in order
+        Promise.all(this.page_promises).then((html_pages) => {
+            for (let html of html_pages) {
+                this.render_page(html);
+            }
+            this.page_promises = [];
+        });
     }
 }
