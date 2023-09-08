@@ -2,33 +2,36 @@ import * as utils from "./utils";
 
 export class Epub {
     name: string;
+    // array containing urls to the xhtml/html files within the epub
     files: string[];
-    container: HTMLElement;
+    // the content type of the files: either application/xhtml+xml,
+    // application/xml, image/svg+xml, text/html or text/xml
     content_type: DOMParserSupportedType;
-    attributes: object; // attribute names for the different content types
+    // promises for downloading css files required for rendering the epub
+    css_promises: Promise<void>[] = [];
+    // promises for downloading the epub files
+    page_promises: Promise<string>[] = [];
+    // HTMLElement used to hold all the rendered epub content
+    render_container: HTMLElement;
 
-    css_promises: Promise<void>[];
-    page_promises: Promise<string>[];
-
-    constructor(name: string, files: string[], container_div: HTMLElement) {
-        this.css_promises = [];
-        this.page_promises = [];
-
+    constructor(name: string, files: string[], container: HTMLElement) {
         this.name = name;
         this.files = files;
-        this.container = container_div;
+        this.render_container = container;
         this.content_type = utils.get_content_type(this.files[0]);
-        this.attributes = {
-            "text/html": {"href": "href", "img": "img"},
-            "application/xhtml+xml": {"href": "xlink:href", "img": "image"}
-        }
     }
 
     private get_attr(id: string): string {
-        return this.attributes[this.content_type as keyof typeof this.attributes][id];
+        // attribute name mappings for xhtml and html elements
+        let attributes: object = {
+            "text/html": {"href": "href", "img": "img"},
+            "application/xhtml+xml": {"href": "xlink:href", "img": "image"}
+        };
+        return attributes[this.content_type as keyof typeof attributes][id];
     }
 
-    private parse_node(node: Element): HTMLElement | undefined {
+    private process_node(node: Element): HTMLElement | undefined {
+        // render horizantal rules for epub files meant to be rendered by the calibre app
         for (let c of Array.from(node.classList)) {
             if (c.includes("calibre") && node.innerHTML.split("=").length >= 6) {
                 return document.createElement("hr");
@@ -58,30 +61,29 @@ export class Epub {
             return text;
 
         default:
-            return undefined; // TODO: Unrecognized node: div ...
+            return undefined; // unrecognized nodes are undefined -- ex. div, etc.
         }
     }
 
-    private process_node(node: Element, doc: HTMLElement) {
-        let n = this.parse_node(node);
+    private render_node(root: Element, doc: HTMLElement) {
+        let n = this.process_node(root);
         if (n != undefined)
             doc.appendChild(n);
 
-        for (let n of node.children) {
-            this.process_node(n, doc);
+        for (let n of root.children) {
+            this.render_node(n, doc);
         }
     }
 
-    // we're combining all the css into one file
-    // maybe we could read the css of one page and extrapolate that to the rest
-    // of the book ??? (for efficiency reasons)
-    private apply_page_css(meta_tags: HTMLCollection, doc: Document) {
+    private apply_rendered_page_css(meta_tags: HTMLCollection, doc: Document) {
         for (let i = 0; i < meta_tags.length; i++) {
             let node = meta_tags[i];
-            if (node.nodeName.toLowerCase() != "link") continue;
-            if ((node as HTMLLinkElement).rel != "stylesheet") continue;
+            let lnode = node as HTMLLinkElement;
+            if (node.nodeName.toLowerCase() != "link" || lnode.rel != "stylesheet") {
+                continue;
+            }
 
-            let css_url = (node as HTMLLinkElement).href.replace(`${window.location.origin}/`, "");
+            let css_url = lnode.href.replace(`${window.location.origin}/`, "");
             css_url = utils.static_file_url(`${this.name}/${css_url}`);
 
             const p = utils.download_file(css_url).then((css: string) => {
@@ -100,28 +102,24 @@ export class Epub {
             let h = iframe.contentWindow!.document.documentElement.scrollHeight;
             iframe.style.height = `${h}px`;
         }
-        this.container.appendChild(iframe);
+        this.render_container.appendChild(iframe);
    }
 
     private render_page(content: string) {
         const parsed_doc = new DOMParser().parseFromString(content, this.content_type);
 
         let doc = document.implementation.createHTMLDocument();
-        this.process_node(parsed_doc.body, doc.body);
+        this.render_node(parsed_doc.body, doc.body);
 
-        this.apply_page_css(parsed_doc.head.children, doc);
+        this.apply_rendered_page_css(parsed_doc.head.children, doc);
         // Wait until all the css files have been downloaded to process the resulting document.
-        Promise.all(this.css_promises).then(() => {
-            this.encapsulate_page(doc)
-            this.css_promises = [];
-        });
+        Promise.all(this.css_promises).then(() => this.encapsulate_page(doc));
     }
 
     render() {
-        for (let i = 0; i < this.files.length; i++) {
-            const file = this.files[i];
+        for (let file of this.files) {
             let url = utils.static_file_url(file);
-            const p = utils.download_file(url).then((content: string) => content );
+            const p = utils.download_file(url).then((content: string) => content);
             this.page_promises.push(p);
         }
 
@@ -130,7 +128,6 @@ export class Epub {
             for (let html of html_pages) {
                 this.render_page(html);
             }
-            this.page_promises = [];
         });
     }
 }
