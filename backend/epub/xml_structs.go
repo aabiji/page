@@ -67,7 +67,7 @@ type Meta struct {
 }
 
 type Metadata struct {
-	XMLName     xml.Name `xml:"metadata"`
+    XMLName     xml.Name `xml:"metadata" json:"-"`
 	Language    string   `xml:"language"`
 	Author      string   `xml:"creator"`
 	Title       string   `xml:"title"`
@@ -81,7 +81,7 @@ type Metadata struct {
 	Description string   `xml:"description"`
 	Date        string   `xml:"date"`
 	Subjects    []string `xml:"subject"`
-	Meta        []Meta   `xml:"meta"`
+    Meta        []Meta   `xml:"meta" json:"-"`
 }
 
 type Item struct {

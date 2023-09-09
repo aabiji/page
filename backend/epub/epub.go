@@ -1,21 +1,33 @@
 package epub
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"golang.org/x/net/html"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-// The directory where the epub files will be extracted into
-// set by Storage struct in the server module
+// The directory where the epub files will be extracted into.
+// Set by Storage struct in the server module.
 var STORAGE_DIRECTORY string
+
+var CONTENT_TYPES = map[string]string{
+    "html": "text/html",
+    "xhtml": "application/xhtml+xml",
+}
+
+type File struct {
+    Path string
+    ContentType string
+}
 
 type Epub struct {
 	Name                string
 	Info                Metadata
-	Files               []string
+	Files               []File
 	CoverImagePath      string
 	TableOfContents     [][2]string
 	IsFixedLayout       bool
@@ -28,9 +40,9 @@ func New(filename string) (Epub, error) {
 		return Epub{}, errors.New("Invalid epub file")
 	}
 
-	e := Epub{Name: getFileBase(filename)}
+	e := Epub{Name: GetFileBase(filename)}
 
-	if err := unzip(filename, e.bookPath()); err != nil {
+	if err := Unzip(filename, e.bookPath()); err != nil {
 		return Epub{}, err
 	}
 	if err := e.verifyMimetype(); err != nil {
@@ -63,6 +75,7 @@ func (e *Epub) Debug() {
 	fmt.Printf("Rights: %s\n", e.Info.Rights)
 	fmt.Printf("Contributor: %s\n", e.Info.Contributor)
 	fmt.Printf("Identifier: %s\n", e.Info.Identifier)
+    fmt.Printf("Fixed layout? %t\n", e.IsFixedLayout)
 	fmt.Println("Table of contents: ")
 	for _, l := range e.TableOfContents {
 		fmt.Printf("%s : %s \n", l[0], l[1])
@@ -80,7 +93,7 @@ func (e *Epub) bookPath(files ...string) string {
 	for _, f := range files {
 		pathParts := strings.Split(f, "/")
 		for _, p := range pathParts {
-			if !Contains(path, p) {
+			if !Contains(path, p) && p != ".." {
 				path = append(path, p)
 			}
 		}
@@ -105,7 +118,7 @@ func (e *Epub) verifyMimetype() error {
 }
 
 func (e *Epub) parseContainer() error {
-	c, err := parseXML[Container](e.bookPath("META-INF", "container.xml"))
+	c, err := ParseXML[Container](e.bookPath("META-INF", "container.xml"))
 	if err != nil {
 		return err
 	}
@@ -145,8 +158,100 @@ func (e *Epub) getCoverImagePath(p Package, items map[string]string) {
 	}
 }
 
+// Get the contents of the css files linked in a html document's head node.
+func (e *Epub) getLinkedCSS(head *html.Node) (string, error) {
+    var css string
+
+    for node := head.FirstChild; node != nil; node = node.NextSibling {
+        if node.Data != "link" || FindAttribute(node, "rel", "stylesheet") == "" {
+            continue;
+        }
+
+        relativeCssPath := FindAttribute(node, "href", "")
+        cssPath := e.bookPath(relativeCssPath)
+
+        cssFile, err := os.ReadFile(cssPath)
+        if err != nil {
+            return "", err
+        }
+
+        css += string(cssFile)
+        head.RemoveChild(node)
+    }
+
+    return css, nil
+}
+
+// Inject a style node containing css into a html
+// document and return the new resulting html document contents.
+func (e *Epub) injectCSS(htmlContents string) ([]byte, error) {
+    document, err := html.Parse(strings.NewReader(htmlContents))
+    if err != nil {
+        return []byte{}, err
+    }
+    head := FindNode(document, "head")
+
+    css, err := e.getLinkedCSS(head)
+    if err != nil {
+        return []byte{}, err
+    }
+
+    style := html.Node{Type: html.ElementNode, Data: "style"}
+    style.AppendChild(&html.Node{Type: html.TextNode, Data: css})
+    head.AppendChild(&style)
+
+    var htmlBytes bytes.Buffer
+    err = html.Render(&htmlBytes, document)
+    if err != nil {
+        return []byte{}, err
+    }
+
+    return htmlBytes.Bytes(), nil
+}
+
+// Replace a html file with a html document that embeds all of its styling.
+func (e *Epub) updateFile(filename string) error {
+    htmlFile, err := os.ReadFile(filename)
+    if err != nil {
+        return err
+    }
+
+    updatedHtml, err := e.injectCSS(string(htmlFile))
+    if err != nil {
+        return err
+    }
+
+    file, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC, 0644)
+    if err != nil {
+        return err
+    }
+    defer file.Close()
+
+    _, err = file.Write(updatedHtml)
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
+
+func (e *Epub) processFile(relativePath string) (File, error) {
+    f := File{Path: e.bookPath(relativePath)}
+
+    filenameParts := strings.Split(f.Path, ".")
+    extention := filenameParts[len(filenameParts) - 1]
+    f.ContentType = CONTENT_TYPES[extention]
+
+    err := e.updateFile(f.Path)
+    if err != nil {
+        return File{}, err
+    }
+
+    return f, nil
+}
+
 func (e *Epub) parseContent() error {
-	p, err := parseXML[Package](e.bookPath(e.contentFilename))
+	p, err := ParseXML[Package](e.bookPath(e.contentFilename))
 	if err != nil {
 		return err
 	}
@@ -158,7 +263,11 @@ func (e *Epub) parseContent() error {
 	}
 
 	for _, i := range p.Spine.ITemRefs {
-		e.Files = append(e.Files, e.bookPath(items[i.Ref]))
+        file, err := e.processFile(items[i.Ref])
+        if err != nil {
+            return err
+        }
+        e.Files = append(e.Files, file)
 	}
 
 	e.Info = p.Metadata
@@ -173,14 +282,13 @@ func (e *Epub) assembleTableOfContents(points []NavPoint) [][2]string {
 	for _, n := range points {
 		path := e.bookPath(n.Content.Source)
 		links = append(links, [2]string{n.Label.Text, path})
-
 		links = append(links, e.assembleTableOfContents(n.Children)...)
 	}
 	return links
 }
 
 func (e *Epub) parseTableOfContents() error {
-	t, err := parseXML[NCX](e.tableOfContentsPath)
+	t, err := ParseXML[NCX](e.tableOfContentsPath)
 	if err != nil {
 		return err
 	}

@@ -2,30 +2,12 @@ package server
 
 import (
 	"fmt"
-	"github.com/aabiji/read/epub"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"log"
 	"net/http"
 	"time"
 )
-
-func handleRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("got / request")
-}
-
-func handleGreeting(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	path := fmt.Sprintf("epub/tests/%s.epub", vars["bookName"])
-
-	e, err := epub.New(path)
-	if err != nil {
-		fmt.Fprintf(w, "%s\n", err.Error())
-		return
-	}
-
-	fmt.Fprintf(w, "%v", e.Files)
-}
 
 func Run(addr string) {
 	router := mux.NewRouter()

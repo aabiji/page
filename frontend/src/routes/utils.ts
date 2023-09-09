@@ -1,13 +1,12 @@
-export async function call_api(url: string, payload: object = {}): Promise<any> {
-    const response = await fetch(url, {
-        method: "POST",
-        mode: "cors",
-        body: JSON.stringify(payload),
-    });
+
+export async function callApi(url: string, method: string, json: object): Promise<any> {
+    let payload = { method: method, mode: "cors" };
+    if (method == "POST") payload.body = json;
+    const response = await fetch(url, payload);
     return response.json();
 }
 
-export async function download_file(url: string): Promise<string> {
+export async function downloadFile(url: string): Promise<string> {
     const response = await fetch(url, {
         method: "GET",
         mode: "cors",
@@ -15,18 +14,7 @@ export async function download_file(url: string): Promise<string> {
     return response.text();
 }
 
-export function get_content_type(file_url: string): DOMParserSupportedType {
-    // all content types:
-    // ["application/xhtml+xml","application/xml","image/svg+xml","text/html","text/xml"]
-    let extention = file_url.split(".")[1];
-    return extention == "xhtml" ? "application/xhtml+xml" : "text/html";
-}
-
-export function static_file_url(file: string): string {
+export function staticFileUrl(file: string): string {
     let netpath = file.replace("BOOKS/", "");
     return `http://localhost:8080/static/${netpath}`;
-}
-
-export function book_info_url(book_name: string): string {
-    return `http://localhost:8080/${book_name}`
 }

@@ -3,6 +3,7 @@ package epub
 import (
 	"archive/zip"
 	"encoding/xml"
+	"golang.org/x/net/html"
 	"io"
 	"os"
 	"path/filepath"
@@ -18,7 +19,38 @@ func Contains(a []string, b string) bool {
 	return false
 }
 
-func parseXML[T Container | NCX | Package](filename string) (T, error) {
+// Find a node attribute either by expected key and value or by key.
+func FindAttribute(node *html.Node, key string, val string) string {
+    for _, attribute := range node.Attr {
+        if attribute.Key == key && val != "" && attribute.Val == val {
+            return attribute.Val
+        } else if attribute.Key == key {
+            return attribute.Val
+        }
+    }
+    return ""
+}
+
+func FindNode(root *html.Node, tagName string) *html.Node {
+    if root == nil {
+        return nil
+    }
+
+    if root.Type == html.ElementNode && root.Data == tagName {
+        return root
+    }
+
+    for node := root.FirstChild; node != nil; node = node.NextSibling {
+        found := FindNode(node, tagName)
+        if found != nil {
+            return found
+        }
+    }
+
+    return nil
+}
+
+func ParseXML[T Container | NCX | Package](filename string) (T, error) {
 	var t T
 
 	file, err := os.ReadFile(filename)
@@ -37,7 +69,7 @@ func parseXML[T Container | NCX | Package](filename string) (T, error) {
 // Get the filename without the extention or leading directories.
 // ex.
 // '/path/to/file.txt' becomes 'file'
-func getFileBase(filename string) string {
+func GetFileBase(filename string) string {
 	i := 0
 	parts := strings.Split(filename, string(os.PathSeparator))
 	if len(parts) > 0 {
@@ -47,7 +79,7 @@ func getFileBase(filename string) string {
 }
 
 // Unzip filename into outdir
-func unzip(filename, outdir string) error {
+func Unzip(filename, outdir string) error {
 	archive, err := zip.OpenReader(filename)
 	if err != nil {
 		return err
