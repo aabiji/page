@@ -1,10 +1,10 @@
 export async function call_api(url: string, payload: object = {}): Promise<any> {
     const response = await fetch(url, {
-        method: "GET", // change to POST
+        method: "POST",
         mode: "cors",
-        //body: JSON.stringify(payload),
+        body: JSON.stringify(payload),
     });
-    return response.text(); // change to json
+    return response.json();
 }
 
 export async function download_file(url: string): Promise<string> {
