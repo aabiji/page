@@ -1,11 +1,11 @@
 package server
 
 import (
-    "encoding/json"
-    "fmt"
-    "net/http"
+	"encoding/json"
+	"fmt"
 	"github.com/aabiji/read/epub"
 	"github.com/gorilla/mux"
+	"net/http"
 )
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
@@ -22,6 +22,6 @@ func handleGreeting(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(book)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(book)
 }

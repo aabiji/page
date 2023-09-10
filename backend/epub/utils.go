@@ -21,33 +21,42 @@ func Contains(a []string, b string) bool {
 
 // Find a node attribute either by expected key and value or by key.
 func FindAttribute(node *html.Node, key string, val string) string {
-    for _, attribute := range node.Attr {
-        if attribute.Key == key && val != "" && attribute.Val == val {
-            return attribute.Val
-        } else if attribute.Key == key {
-            return attribute.Val
-        }
-    }
-    return ""
+	for _, attribute := range node.Attr {
+		if attribute.Key == key && val != "" && attribute.Val == val {
+			return attribute.Val
+		} else if attribute.Key == key {
+			return attribute.Val
+		}
+	}
+	return ""
+}
+
+// Set a node's attr to a value
+func SetAttribute(node *html.Node, attr string, val string) {
+	for i, _ := range node.Attr {
+		if node.Attr[i].Key == attr {
+			node.Attr[i].Val = val
+		}
+	}
 }
 
 func FindNode(root *html.Node, tagName string) *html.Node {
-    if root == nil {
-        return nil
-    }
+	if root == nil {
+		return nil
+	}
 
-    if root.Type == html.ElementNode && root.Data == tagName {
-        return root
-    }
+	if root.Type == html.ElementNode && root.Data == tagName {
+		return root
+	}
 
-    for node := root.FirstChild; node != nil; node = node.NextSibling {
-        found := FindNode(node, tagName)
-        if found != nil {
-            return found
-        }
-    }
+	for node := root.FirstChild; node != nil; node = node.NextSibling {
+		found := FindNode(node, tagName)
+		if found != nil {
+			return found
+		}
+	}
 
-    return nil
+	return nil
 }
 
 func ParseXML[T Container | NCX | Package](filename string) (T, error) {

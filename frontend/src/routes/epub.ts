@@ -27,10 +27,18 @@ export class Epub {
     }
 
     private renderPage(content: string, contentType: string) {
-        const doc = new DOMParser().parseFromString(content, contentType);
+        const doc = new DOMParser().parseFromString(content, contentType as DOMParserSupportedType);
         let style = document.createElement("style");
         style.textContent = this.default_css;
         doc.head.appendChild(style);
+
+        let imgSrc = contentType == "text/html" ? "src" : "xlink:href";
+        let imgTag = contentType == "text/html" ? "img" : "image";
+        let imgs = doc.getElementsByTagName(imgTag);
+        for (let img of imgs) {
+            let src = img.getAttribute(imgSrc)!;
+            img.setAttribute(imgSrc, utils.staticFileUrl(src));
+        }
 
         let iframe = document.createElement("iframe");
         iframe.srcdoc = doc.documentElement.innerHTML;
