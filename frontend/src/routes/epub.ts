@@ -1,16 +1,12 @@
 import * as utils from "./utils";
 
-export class Epub {
-    name: string;
-    // Array containing all renderable files within the epub. ex.
-    // [{Path: "", ContentType: ""}, ...]
-    files: string[];
-    // Promises for downloading the epub files.
-    pagePromises: Promise<string>[] = [];
+export class EpubViewer {
+    files: object[];
+    pageIndex: number;
     // HTMLElement used to hold all the rendered epub content.
     renderContainer: HTMLElement;
     // The default css to apply for when the epub's xhtml/html files don't have adequate css.
-    default_css: string = `
+    defaultCss: string = `
         body {
             color: black;
             line-height: 2.0;
@@ -20,48 +16,60 @@ export class Epub {
         }
     `;
 
-    constructor(name: string, files: string[], container: HTMLElement) {
-        this.name = name;
+    constructor(files: object[], container: HTMLElement) {
         this.files = files;
+        this.pageIndex = 0;
         this.renderContainer = container;
+    }
+
+    private correctImageLinks(doc: Document) {
+        let imageSource = doc.getElementsByTagName("img").length > 0 ? "src" : "xlink:href";
+        let imageTag = imageSource == "src" ? "img" : "image";
+        let images = doc.getElementsByTagName(imageTag);
+        for (let image of images) {
+            let source = image.getAttribute(imageSource)!;
+            image.setAttribute(imageSource, utils.staticFileUrl(source));
+        }
+    }
+
+    private injectDefaultCSS(doc: Document) {
+        let style = document.createElement("style");
+        style.textContent = this.defaultCss;
+        doc.head.appendChild(style);
     }
 
     private renderPage(content: string, contentType: string) {
         const doc = new DOMParser().parseFromString(content, contentType as DOMParserSupportedType);
-        let style = document.createElement("style");
-        style.textContent = this.default_css;
-        doc.head.appendChild(style);
-
-        let imgSrc = contentType == "text/html" ? "src" : "xlink:href";
-        let imgTag = contentType == "text/html" ? "img" : "image";
-        let imgs = doc.getElementsByTagName(imgTag);
-        for (let img of imgs) {
-            let src = img.getAttribute(imgSrc)!;
-            img.setAttribute(imgSrc, utils.staticFileUrl(src));
-        }
+        this.injectDefaultCSS(doc);
+        this.correctImageLinks(doc);
 
         let iframe = document.createElement("iframe");
+        iframe.scrolling = "no";
         iframe.srcdoc = doc.documentElement.innerHTML;
         iframe.onload = () => { // Resize iframe height to fit content
             let h = iframe.contentWindow!.document.documentElement.scrollHeight;
             iframe.style.height = `${h}px`;
-            iframe.scrolling = "no";
+
+            // Change to next/previous page
+            iframe.contentDocument!.addEventListener("click", (event) => {
+                let x = event.clientX - iframe.getBoundingClientRect().left;
+                let direction = x < 0 ? -1 : 1;
+                this.pageIndex += direction;
+                this.pageIndex = Math.min(Math.max(this.pageIndex, 0), this.files.length - 1);
+
+                this.renderContainer.innerHTML = "";
+                this.render();
+            });
         }
-        this.renderContainer.appendChild(iframe);
+        return iframe;
     }
 
     render() {
-        for (let file of this.files) {
-            let url = utils.staticFileUrl(file.Path);
-            const p = utils.downloadFile(url).then((content: string) => content);
-            this.pagePromises.push(p);
-        }
-
-        // Wait until all the html files have been downloaded to render the pages in order
-        Promise.all(this.pagePromises).then((html_pages) => {
-            for (let i = 0; i < html_pages.length; i++) {
-                this.renderPage(html_pages[i], this.files[i].ContentType);
-            }
+        let file = this.files[this.pageIndex];
+        let url = utils.staticFileUrl(file.Path);
+        utils.downloadFile(url).then((content: string) => {
+            let view = this.renderPage(content, file.ContentType);
+            this.renderContainer.appendChild(view);
         });
     }
 }

@@ -11,8 +11,7 @@ import (
 
 func Run(addr string) {
 	router := mux.NewRouter()
-	router.HandleFunc("/{bookName}", handleGreeting).Methods("GET")
-	router.HandleFunc("/", handleRoot).Methods("GET")
+	router.HandleFunc("/book/get/{name}", getBookInfo).Methods("GET")
 	corsRouter := cors.Default().Handler(router)
 
 	storage := Storage{LocalPath: "BOOKS", NetPath: "/static/"}

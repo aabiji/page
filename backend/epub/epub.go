@@ -162,6 +162,7 @@ func (e *Epub) getCoverImagePath(p Package, items map[string]string) {
 // Get the contents of the css files linked in a html document's head node.
 func (e *Epub) getLinkedCSS(head *html.Node) (string, error) {
 	var css string
+    var nodesToRemove []*html.Node
 
 	for node := head.FirstChild; node != nil; node = node.NextSibling {
 		if node.Data != "link" || FindAttribute(node, "rel", "stylesheet") == "" {
@@ -177,8 +178,12 @@ func (e *Epub) getLinkedCSS(head *html.Node) (string, error) {
 		}
 
 		css += string(cssFile)
-		head.RemoveChild(node)
+        nodesToRemove = append(nodesToRemove, node)
 	}
+
+    for _, n := range nodesToRemove {
+        head.RemoveChild(n)
+    }
 
 	return css, nil
 }
