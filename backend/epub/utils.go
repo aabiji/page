@@ -24,7 +24,7 @@ func FindAttribute(node *html.Node, key string, val string) string {
 	for _, attribute := range node.Attr {
 		if attribute.Key == key && val != "" && attribute.Val == val {
 			return attribute.Val
-		} else if attribute.Key == key {
+		} else if attribute.Key == key && val == "" {
 			return attribute.Val
 		}
 	}

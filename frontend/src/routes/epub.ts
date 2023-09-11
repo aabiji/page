@@ -51,11 +51,10 @@ export class EpubViewer {
             iframe.style.height = `${h}px`;
 
             // Change to next/previous page
-            iframe.contentDocument!.addEventListener("click", (event) => {
-                let x = event.clientX - iframe.getBoundingClientRect().left;
-                let direction = x < 0 ? -1 : 1;
-                this.pageIndex += direction;
-                this.pageIndex = Math.min(Math.max(this.pageIndex, 0), this.files.length - 1);
+            iframe.contentDocument!.addEventListener("click", () => {
+                this.pageIndex ++;
+                if (this.pageIndex < 0) this.pageIndex = 0;
+                if (this.pageIndex >= this.files.length - 1) this.files.length - 1;
 
                 this.renderContainer.innerHTML = "";
                 this.render();

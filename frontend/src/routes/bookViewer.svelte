@@ -7,60 +7,92 @@
         return callApi(`http://localhost:8080/book/get/${name}`, "GET", {});
     }
 
-    let book = {Title: "AnimalFarm", Author: "-", Date: "-", Description: "-",
-                Contributor: "-", Coverage: "-", Source: "-", Rights: "-",
-                Relation: "-", Publisher: "-", Language: "-", Identifier: "-", Subjects: []};
+    let errorOut = false;
+    let book = {
+        TableOfContents: [],
+        Info: {
+            Title: "-", Author: "-", Description: "-", Date: "-",
+            Contributor: "-", Coverage: "-", Source: "-", Rights: "-",
+            Relation: "-", Publisher: "0", Language: "-", "Identifier": "-",
+            Subjects: []
+        },
+    };
     onMount(() => {
         let div = document.getElementById("book-view")!;
 
-        getBookInfo(book.Title).then((json) => {
-            if ("Server error" in json) return;
+        getBookInfo("AnimalFarm").then((json) => {
+            if ("Server error" in json) {
+                errorOut = true;
+                return;
+            }
 
-            book = json.Info;
-            book.Subjects = book.Subjects == null ? [] : book.Subjects;
-
+            book = json;
+            book.Info.Subjects = book.Info.Subjects == null ? [] : book.Info.Subjects;
             let e = new EpubViewer(json.Files, div);
             e.render();
         });
     });
 </script>
 
-<div class="container">
-    <div class="info-sidepanel">
-        <h1> {book.Title} </h1>
-        <!--- cover image goes here: --->
-        <h3> {book.Author} </h3>
-        <h5> {book.Description} </h5>
-        <p> Date: {book.Date} </p>
-        <p> Contributor: {book.Contributor} </p>
-        <p> Coverage: {book.Coverage} </p>
-        <p> Source: {book.Source} </p>
-        <p> Rights: {book.Rights} </p>
-        <p> Relation: {book.Relation} </p>
-        <p> Publisher: {book.Publisher} </p>
-        <p> Language: {book.Language} </p>
-        <p> Identifier: {book.Identifier} </p>
-        <p> Subjects: {#each book.Subjects as subject} {subject}, {/each} </p>
-        <hr>
-    </div>
-    <div id="book-view"></div>
+{#if errorOut}
+<div class="error">
+    <p> Oops, something went wrong </p>
 </div>
+{:else}
+<div class="container">
+    <div class="left-sidepanel">
+        <h1> {book.Info.Title} </h1>
+        <!--- cover image goes here: --->
+        <h3> {book.Info.Author} </h3>
+        <h5> {book.Info.Description} </h5>
+        <p> Date: {book.Info.Date} </p>
+        <p> Contributor: {book.Info.Contributor} </p>
+        <p> Coverage: {book.Info.Coverage} </p>
+        <p> Source: {book.Info.Source} </p>
+        <p> Rights: {book.Info.Rights} </p>
+        <p> Relation: {book.Info.Relation} </p>
+        <p> Publisher: {book.Info.Publisher} </p>
+        <p> Language: {book.Info.Language} </p>
+        <p> Identifier: {book.Info.Identifier} </p>
+        <p> Subjects: {#each book.Info.Subjects as subject} {subject}, {/each} </p>
+        <hr>
+        <h3> Table of contents </h3>
+        <ol>
+            {#each book.TableOfContents as section}
+                <li><a href={section[1]}>{section[0]}</a></li>
+            {/each}
+        </ol>
+    </div>
+    <div class="right-sidepanel">
+        <div id="book-view"></div>
+    </div>
+</div>
+{/if}
 
 <style>
     .container {
         display: flex;
-        padding: none;
     }
 
     #book-view {
-        width: 600px;
+        width: 55%;
         margin: 0 auto;
     }
 
-    .info-sidepanel {
+    .right-sidepanel {
+        width: 75%;
+        border: 1px solid black;
+    }
+
+    .left-sidepanel {
         width: 25%;
         height: 100vh;
+        overflow-y: scroll;
+        background-color: #a8a8a8;
+        overflow-wrap: break-word;
+    }
+
+    .left-sidepanel h1, h3, h5 {
         text-align: center;
-        background-color: blue;
     }
 </style>

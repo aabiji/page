@@ -234,11 +234,11 @@ func (e *Epub) fixImageLinks(root *html.Node) error {
 // Replace relative paths to images with absolute paths.
 func (e *Epub) updateFile(f *File) error {
 	err := e.injectCSS(f)
-	if err != nil {
+    if err != nil {
 		return err
 	}
 
-	err = e.fixImageLinks(f.document)
+    err = e.fixImageLinks(f.document)
 	if err != nil {
 		return err
 	}
