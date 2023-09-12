@@ -20,9 +20,10 @@ var CONTENT_TYPES = map[string]string{
 }
 
 type File struct {
-	Path        string
-	ContentType string
-	document    *html.Node
+	Path         string
+	ContentType  string
+	ScrollOffset int
+	document     *html.Node
 }
 
 type Epub struct {
@@ -162,7 +163,7 @@ func (e *Epub) getCoverImagePath(p Package, items map[string]string) {
 // Get the contents of the css files linked in a html document's head node.
 func (e *Epub) getLinkedCSS(head *html.Node) (string, error) {
 	var css string
-    var nodesToRemove []*html.Node
+	var nodesToRemove []*html.Node
 
 	for node := head.FirstChild; node != nil; node = node.NextSibling {
 		if node.Data != "link" || FindAttribute(node, "rel", "stylesheet") == "" {
@@ -178,12 +179,12 @@ func (e *Epub) getLinkedCSS(head *html.Node) (string, error) {
 		}
 
 		css += string(cssFile)
-        nodesToRemove = append(nodesToRemove, node)
+		nodesToRemove = append(nodesToRemove, node)
 	}
 
-    for _, n := range nodesToRemove {
-        head.RemoveChild(n)
-    }
+	for _, n := range nodesToRemove {
+		head.RemoveChild(n)
+	}
 
 	return css, nil
 }
@@ -234,11 +235,11 @@ func (e *Epub) fixImageLinks(root *html.Node) error {
 // Replace relative paths to images with absolute paths.
 func (e *Epub) updateFile(f *File) error {
 	err := e.injectCSS(f)
-    if err != nil {
+	if err != nil {
 		return err
 	}
 
-    err = e.fixImageLinks(f.document)
+	err = e.fixImageLinks(f.document)
 	if err != nil {
 		return err
 	}

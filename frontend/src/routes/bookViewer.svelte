@@ -20,7 +20,7 @@
     onMount(() => {
         let div = document.getElementById("book-view")!;
 
-        getBookInfo("AnimalFarm").then((json) => {
+        getBookInfo("Dune").then((json) => {
             if ("Server error" in json) {
                 errorOut = true;
                 return;
@@ -75,19 +75,20 @@
     }
 
     #book-view {
-        width: 55%;
+        width: 65%;
+        height: 100%;
         margin: 0 auto;
     }
 
     .right-sidepanel {
         width: 75%;
+        height: 97vh;
         border: 1px solid black;
     }
 
     .left-sidepanel {
         width: 25%;
-        height: 100vh;
-        overflow-y: scroll;
+        height: 97vh;
         background-color: #a8a8a8;
         overflow-wrap: break-word;
     }

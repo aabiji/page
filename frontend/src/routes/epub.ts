@@ -47,19 +47,28 @@ export class EpubViewer {
         iframe.scrolling = "no";
         iframe.srcdoc = doc.documentElement.innerHTML;
         iframe.onload = () => { // Resize iframe height to fit content
-            let h = iframe.contentWindow!.document.documentElement.scrollHeight;
-            iframe.style.height = `${h}px`;
+            iframe.style.height = "inherit";
 
-            // Change to next/previous page
-            iframe.contentDocument!.addEventListener("click", () => {
-                this.pageIndex ++;
+            let file = this.files[this.pageIndex];
+            const half = this.renderContainer.clientWidth / 2;
+            const scrollStep = this.renderContainer.clientHeight;
+            let docHeight = iframe.contentWindow!.document.documentElement.scrollHeight;
+            iframe.contentDocument!.addEventListener("click", (event) => {
+                let scrollDirection = event.clientX > half ? 1 : -1;
+                file.ScrollOffset += (scrollStep * scrollDirection);
+                iframe.contentWindow.document.documentElement.scrollTo(0, file.ScrollOffset);
+
+                if (file.ScrollOffset >= 0 && file.ScrollOffset < docHeight) return;
+                let fileCount = this.files.length;
+                let pageDirection = file.ScrollOffset >= docHeight ? 1 : -1;
+                this.pageIndex += pageDirection;
                 if (this.pageIndex < 0) this.pageIndex = 0;
-                if (this.pageIndex >= this.files.length - 1) this.files.length - 1;
-
+                if (this.pageIndex >= fileCount) this.pageIndex = fileCount;
                 this.renderContainer.innerHTML = "";
                 this.render();
             });
         }
+
         return iframe;
     }
 
