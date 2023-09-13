@@ -6,7 +6,7 @@ export class EpubViewer {
     // Vertical scrolling offsets within the HTML/XHTML files.
     scrollOffsets: number[];
     // The amount to vertically scroll at once.
-    // Is set to the height of the renderContainer.
+    // Is set to the height of the renderContainer minus some padding.
     scrollStep: number;
     // Index to the currently rendered HTML/XHTML file.
     currentPage: number;
@@ -17,11 +17,12 @@ export class EpubViewer {
     // The default CSS to apply for when the epub's XHTML/HTML files don't have adequate CSS.
     defaultCss: string = `
         body {
-            color: black;
+            color: white;
             line-height: 2.0;
             text-indent: 25px;
             text-align: left;
-            background-color: white;
+            background-color: #1c1c1c;
+            font-family: Arial, Helvetica, sans-serif;
         }
     `;
 
@@ -30,7 +31,7 @@ export class EpubViewer {
         this.currentPage = currentPage;
         this.scrollOffsets = scrollOffsets;
         this.renderContainer = container;
-        this.scrollStep = this.renderContainer.clientHeight;
+        this.scrollStep = this.renderContainer.clientHeight - 10;
         this.containerMidPoint = this.renderContainer.clientWidth / 2;
     }
 

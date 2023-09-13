@@ -39,7 +39,7 @@
 
             userBook.Info = json.Epub.Info;
             if (userBook.Info.Subjects == null)
-                userBook.Info.Subjects = [];
+                userBook.Info.Subjects = ["-"];
 
             userBook.TableOfContents = json.Epub.TableOfContents;
             userBook.CoverImagePath = utils.staticFileUrl(json.Epub.CoverImagePath);
@@ -60,6 +60,7 @@
         <h1> {userBook.Info.Title} </h1>
         <img alt="Ebook cover image" src={userBook.CoverImagePath}/>
         <h3> {userBook.Info.Author} </h3>
+        <hr>
         <h5> {userBook.Info.Description} </h5>
         <p> Date: {userBook.Info.Date} </p>
         <p> Contributor: {userBook.Info.Contributor} </p>
@@ -70,7 +71,7 @@
         <p> Publisher: {userBook.Info.Publisher} </p>
         <p> Language: {userBook.Info.Language} </p>
         <p> Identifier: {userBook.Info.Identifier} </p>
-        <p> Subjects: {#each userBook.Info.Subjects as subject} {subject}, {/each} </p>
+        <p> Subjects: {#each userBook.Info.Subjects as subject} {subject}  {/each} </p>
         <hr>
         <h3> Table of contents </h3>
         <ol>
@@ -91,23 +92,31 @@
     }
 
     #book-view {
-        width: 65%;
+        width: 600px;
         height: 100%;
         margin: 0 auto;
     }
 
     .right-sidepanel {
-        width: 75%;
+        width: 80%;
         height: 97vh;
-        border: 1px solid black;
     }
 
     .left-sidepanel {
-        width: 25%;
+        width: 20%;
         height: 97vh;
-        overflow: scroll;
-        background-color: #a8a8a8;
+        overflow-y: scroll;
+        background-color: #1c1c1c;
         overflow-wrap: break-word;
+    }
+
+    .left-sidepanel p {
+        font-size: 15px;
+    }
+
+    .left-sidepanel a {
+        color: white;
+        text-decoration: none;
     }
 
     .left-sidepanel img {

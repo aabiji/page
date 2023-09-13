@@ -1,4 +1,6 @@
 body {
+    color: white;
+    background-color: #101010;
     font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -8,22 +10,14 @@ iframe {
 }
 
 ::-webkit-scrollbar {
-  width: 5px; /* Width of the entire scrollbar */
+    width: 5px;
 }
 
-/* Track background */
-::-webkit-scrollbar-track {
-  background: #f0f0f0; /* Background color of the scrollbar track */
-}
-
-/* Handle */
 ::-webkit-scrollbar-thumb {
-  width: 10px;
-  background: #888; /* Color of the scrollbar handle */
-  border-radius: 8px; /* Rounded corners of the handle */
+    background: #888;
+    border-radius: 8px;
 }
 
-/* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
-  background: #555; /* Color of the scrollbar handle on hover */
+    background: #555;
 }
