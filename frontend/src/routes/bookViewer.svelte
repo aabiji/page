@@ -1,21 +1,32 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { EpubViewer } from "./epub";
-    import { callApi } from "./utils";
-
+    import * as utils from "./utils";
+    
     function getBookInfo(name: string) {
-        return callApi(`http://localhost:8080/book/get/${name}`, "GET", {});
+        return utils.callApi(`http://localhost:8080/book/get/${name}`, "GET", {});
     }
 
     let errorOut = false;
-    let book = {
-        TableOfContents: [],
+    let userBook = {
+        CurrentPage: 0,
         Info: {
-            Title: "-", Author: "-", Description: "-", Date: "-",
-            Contributor: "-", Coverage: "-", Source: "-", Rights: "-",
-            Relation: "-", Publisher: "0", Language: "-", "Identifier": "-",
-            Subjects: []
+            Author: "",
+            Contributor: "",
+            Coverage: "",
+            Date: "",
+            Description: "",
+            Identifier: "",
+            Language: "",
+            Publisher: "",
+            Relation: "",
+            Rights: "",
+            Source: "",
+            Subjects: [],
+            Title: "",
         },
+        TableOfContents: [],
+        CoverImagePath: "",
     };
     onMount(() => {
         let div = document.getElementById("book-view")!;
@@ -26,9 +37,14 @@
                 return;
             }
 
-            book = json;
-            book.Info.Subjects = book.Info.Subjects == null ? [] : book.Info.Subjects;
-            let e = new EpubViewer(json.Files, div);
+            userBook.Info = json.Epub.Info;
+            if (userBook.Info.Subjects == null)
+                userBook.Info.Subjects = [];
+
+            userBook.TableOfContents = json.Epub.TableOfContents;
+            userBook.CoverImagePath = utils.staticFileUrl(json.Epub.CoverImagePath);
+
+            let e = new EpubViewer(json.FileScrollOffsets, json.Epub.Files, json.CurrentPage, div);
             e.render();
         });
     });
@@ -41,24 +57,24 @@
 {:else}
 <div class="container">
     <div class="left-sidepanel">
-        <h1> {book.Info.Title} </h1>
-        <!--- cover image goes here: --->
-        <h3> {book.Info.Author} </h3>
-        <h5> {book.Info.Description} </h5>
-        <p> Date: {book.Info.Date} </p>
-        <p> Contributor: {book.Info.Contributor} </p>
-        <p> Coverage: {book.Info.Coverage} </p>
-        <p> Source: {book.Info.Source} </p>
-        <p> Rights: {book.Info.Rights} </p>
-        <p> Relation: {book.Info.Relation} </p>
-        <p> Publisher: {book.Info.Publisher} </p>
-        <p> Language: {book.Info.Language} </p>
-        <p> Identifier: {book.Info.Identifier} </p>
-        <p> Subjects: {#each book.Info.Subjects as subject} {subject}, {/each} </p>
+        <h1> {userBook.Info.Title} </h1>
+        <img alt="Ebook cover image" src={userBook.CoverImagePath}/>
+        <h3> {userBook.Info.Author} </h3>
+        <h5> {userBook.Info.Description} </h5>
+        <p> Date: {userBook.Info.Date} </p>
+        <p> Contributor: {userBook.Info.Contributor} </p>
+        <p> Coverage: {userBook.Info.Coverage} </p>
+        <p> Source: {userBook.Info.Source} </p>
+        <p> Rights: {userBook.Info.Rights} </p>
+        <p> Relation: {userBook.Info.Relation} </p>
+        <p> Publisher: {userBook.Info.Publisher} </p>
+        <p> Language: {userBook.Info.Language} </p>
+        <p> Identifier: {userBook.Info.Identifier} </p>
+        <p> Subjects: {#each userBook.Info.Subjects as subject} {subject}, {/each} </p>
         <hr>
         <h3> Table of contents </h3>
         <ol>
-            {#each book.TableOfContents as section}
+            {#each userBook.TableOfContents as section}
                 <li><a href={section[1]}>{section[0]}</a></li>
             {/each}
         </ol>
@@ -89,8 +105,15 @@
     .left-sidepanel {
         width: 25%;
         height: 97vh;
+        overflow: scroll;
         background-color: #a8a8a8;
         overflow-wrap: break-word;
+    }
+
+    .left-sidepanel img {
+        width: auto;
+        height: 225px;
+        margin-left: 25%;
     }
 
     .left-sidepanel h1, h3, h5 {

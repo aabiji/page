@@ -14,27 +14,22 @@ import (
 // Set by Storage struct in the server module.
 var STORAGE_DIRECTORY string
 
-var CONTENT_TYPES = map[string]string{
-	"html":  "text/html",
-	"xhtml": "application/xhtml+xml",
-}
-
 type File struct {
-	Path         string
-	ContentType  string
-	ScrollOffset int
-	document     *html.Node
+	Path        string
+	ContentType string
+	document    *html.Node
 }
 
 type Epub struct {
 	Name                string
 	Info                Metadata
 	Files               []File
-	CoverImagePath      string
 	TableOfContents     [][2]string
 	IsFixedLayout       bool
+    CoverImagePath string
 	tableOfContentsPath string
 	contentFilename     string
+    coverPath string
 }
 
 func New(filename string) (Epub, error) {
@@ -66,8 +61,7 @@ func New(filename string) (Epub, error) {
 func (e *Epub) Debug() {
 	fmt.Printf("%s by %s in %s\n", e.Info.Title, e.Info.Author, e.Info.Date)
 	fmt.Printf("Description: %s\n", e.Info.Description)
-	fmt.Printf("Cover image: %s\n", e.CoverImagePath)
-	fmt.Printf("Files: %v\n", e.Files)
+	fmt.Printf("Cover image: %s\n", e.coverPath)
 	fmt.Printf("Subjects: %v\n", e.Info.Subjects)
 	fmt.Printf("Publisher: %s\n", e.Info.Publisher)
 	fmt.Printf("Language: %s\n", e.Info.Language)
@@ -78,6 +72,10 @@ func (e *Epub) Debug() {
 	fmt.Printf("Contributor: %s\n", e.Info.Contributor)
 	fmt.Printf("Identifier: %s\n", e.Info.Identifier)
 	fmt.Printf("Fixed layout? %t\n", e.IsFixedLayout)
+    fmt.Println("Files: ")
+    for _, f := range e.Files {
+        fmt.Printf("Path %s | Content type: %s\n", f.Path, f.ContentType)
+    }
 	fmt.Println("Table of contents: ")
 	for _, l := range e.TableOfContents {
 		fmt.Printf("%s : %s \n", l[0], l[1])
@@ -133,19 +131,20 @@ func (e *Epub) parseContainer() error {
 	return nil
 }
 
-func (e *Epub) getCoverImagePath(p Package, items map[string]string) {
+// Traverse the xml to find a path to the epub's cover.
+func (e *Epub) getCoverPath(p Package, items map[string]string) {
 	for _, r := range p.Guide.References {
 		if r.Type == "cover" {
-			e.CoverImagePath = e.bookPath(r.Path)
+			e.coverPath = e.bookPath(r.Path)
 			break
 		}
 	}
 
 	// If there's no references in the guide node check if the meta nodes
-	if e.CoverImagePath == "" {
+	if e.coverPath== "" {
 		for _, m := range p.Metadata.Meta {
 			if m.Name == "cover" {
-				e.CoverImagePath = m.Content
+				e.coverPath = m.Content
 				break
 			}
 		}
@@ -153,11 +152,39 @@ func (e *Epub) getCoverImagePath(p Package, items map[string]string) {
 
 	// If the result from searching the meta nodes isn't a file
 	// use the result as key to get a file
-	if !strings.Contains(e.CoverImagePath, ".") {
-		e.CoverImagePath = e.bookPath(items[e.CoverImagePath])
+	if !strings.Contains(e.coverPath, ".") {
+		e.coverPath = e.bookPath(items[e.coverPath])
 	} else {
-		e.CoverImagePath = e.bookPath(e.CoverImagePath)
+		e.coverPath = e.bookPath(e.coverPath)
 	}
+}
+
+// Get an absolute path to the epub's cover image.
+func (e *Epub) getCoverImagePath() error {
+    fileParts := strings.Split(e.coverPath, ".")
+    extension := fileParts[len(fileParts) - 1]
+    if extension != "xhtml" && extension != "html" {
+        e.CoverImagePath = e.coverPath
+        return nil // Cover image path is already found
+    }
+
+    document, err := ParseHTML(e.coverPath)
+    if err != nil {
+        return err
+    }
+
+    imageNode := FindNode(document, "img")
+    if imageNode == nil {
+        imageNode = FindNode(document, "image")
+    }
+
+    e.CoverImagePath = FindAttribute(imageNode, "src", "")
+    if e.CoverImagePath == "" {
+        e.CoverImagePath = FindAttribute(imageNode, "href", "")
+    }
+
+    e.CoverImagePath = e.bookPath(e.CoverImagePath)
+    return nil
 }
 
 // Get the contents of the css files linked in a html document's head node.
@@ -268,18 +295,18 @@ func (e *Epub) processFile(relativePath string) (File, error) {
 	f := File{Path: e.bookPath(relativePath)}
 
 	filenameParts := strings.Split(f.Path, ".")
-	extention := filenameParts[len(filenameParts)-1]
-	f.ContentType = CONTENT_TYPES[extention]
+	extension := filenameParts[len(filenameParts)-1]
+    if extension == "html" {
+        f.ContentType = "text/html"
+    } else if extension == "xhtml" {
+        f.ContentType = "application/xhtml+xml"
+    }
 
-	htmlContents, err := os.ReadFile(f.Path)
-	if err != nil {
-		return File{}, err
-	}
-
-	f.document, err = html.Parse(strings.NewReader(string(htmlContents)))
-	if err != nil {
-		return File{}, err
-	}
+    var err error
+    f.document, err = ParseHTML(f.Path)
+    if err != nil {
+        return File{}, err
+    }
 
 	err = e.updateFile(&f)
 	if err != nil {
@@ -310,9 +337,9 @@ func (e *Epub) parseContent() error {
 	}
 
 	e.Info = p.Metadata
-	e.getCoverImagePath(p, items)
-	e.tableOfContentsPath = e.bookPath(items[p.Spine.Toc])
-
+	e.getCoverPath(p, items)
+    e.getCoverImagePath()
+	e.tableOfContentsPath = e.bookPath(items[p.Spine.TableOfContents])
 	return nil
 }
 

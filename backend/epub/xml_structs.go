@@ -103,7 +103,7 @@ type ItemRef struct {
 
 type Spine struct {
 	XMLName  xml.Name  `xml:"spine"`
-	Toc      string    `xml:"toc,attr"`
+	TableOfContents      string    `xml:"toc,attr"`
 	ITemRefs []ItemRef `xml:"itemref"`
 }
 

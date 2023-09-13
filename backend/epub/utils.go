@@ -59,6 +59,20 @@ func FindNode(root *html.Node, tagName string) *html.Node {
 	return nil
 }
 
+func ParseHTML(filename string) (*html.Node, error) {
+	htmlContents, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+    document, err := html.Parse(strings.NewReader(string(htmlContents)))
+	if err != nil {
+		return nil, err
+	}
+
+    return document, nil
+}
+
 func ParseXML[T Container | NCX | Package](filename string) (T, error) {
 	var t T
 

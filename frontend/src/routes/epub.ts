@@ -1,11 +1,20 @@
 import * as utils from "./utils";
 
 export class EpubViewer {
+    // HTMl/XHTML files within the epub file.
     files: object[];
-    pageIndex: number;
+    // Vertical scrolling offsets within the HTML/XHTML files.
+    scrollOffsets: number[];
+    // The amount to vertically scroll at once.
+    // Is set to the height of the renderContainer.
+    scrollStep: number;
+    // Index to the currently rendered HTML/XHTML file.
+    currentPage: number;
+    // The horizantal middle of the renderContainer in pixels.
+    containerMidPoint: number;
     // HTMLElement used to hold all the rendered epub content.
     renderContainer: HTMLElement;
-    // The default css to apply for when the epub's xhtml/html files don't have adequate css.
+    // The default CSS to apply for when the epub's XHTML/HTML files don't have adequate CSS.
     defaultCss: string = `
         body {
             color: black;
@@ -16,10 +25,13 @@ export class EpubViewer {
         }
     `;
 
-    constructor(files: object[], container: HTMLElement) {
+    constructor(scrollOffsets: number[], files: object[], currentPage: number, container: HTMLElement) {
         this.files = files;
-        this.pageIndex = 0;
+        this.currentPage = currentPage;
+        this.scrollOffsets = scrollOffsets;
         this.renderContainer = container;
+        this.scrollStep = this.renderContainer.clientHeight;
+        this.containerMidPoint = this.renderContainer.clientWidth / 2;
     }
 
     private correctImageLinks(doc: Document) {
@@ -38,42 +50,52 @@ export class EpubViewer {
         doc.head.appendChild(style);
     }
 
+    private scroll(iframe: HTMLIFrameElement, event: MouseEvent) {
+        const docHeight = iframe.contentWindow!.document.documentElement.scrollHeight;
+        let scrollOffset = this.scrollOffsets[this.currentPage];
+
+        // Scroll up or down depending on which side the click was registered
+        const scrollDirection = event.clientX > this.containerMidPoint ? 1 : -1;
+        scrollOffset += this.scrollStep * scrollDirection;
+
+        iframe.contentWindow!.document.documentElement.scrollTo(0, scrollOffset);
+        this.scrollOffsets[this.currentPage] = scrollOffset;
+
+        const overflow = scrollOffset < 0 || scrollOffset > docHeight;
+        if (!overflow) return; // No need to change current page
+
+        const pageDirection = scrollOffset >= docHeight ? 1 : -1;
+        this.currentPage += pageDirection;
+        if (this.currentPage < 0)
+            this.currentPage = this.files.length - 1;
+        else if (this.currentPage == this.files.length)
+            this.currentPage = 0;
+
+        this.renderContainer.innerHTML = "";
+        this.render();
+    }
+
     private renderPage(content: string, contentType: string) {
         const doc = new DOMParser().parseFromString(content, contentType as DOMParserSupportedType);
         this.injectDefaultCSS(doc);
         this.correctImageLinks(doc);
 
         let iframe = document.createElement("iframe");
-        iframe.scrolling = "no";
         iframe.srcdoc = doc.documentElement.innerHTML;
-        iframe.onload = () => { // Resize iframe height to fit content
+        iframe.scrolling = "no";
+        iframe.onload = () => {
             iframe.style.height = "inherit";
+            iframe.contentDocument!.addEventListener("click", (event) => this.scroll(iframe, event));
 
-            let file = this.files[this.pageIndex];
-            const half = this.renderContainer.clientWidth / 2;
-            const scrollStep = this.renderContainer.clientHeight;
-            let docHeight = iframe.contentWindow!.document.documentElement.scrollHeight;
-            iframe.contentDocument!.addEventListener("click", (event) => {
-                let scrollDirection = event.clientX > half ? 1 : -1;
-                file.ScrollOffset += (scrollStep * scrollDirection);
-                iframe.contentWindow.document.documentElement.scrollTo(0, file.ScrollOffset);
-
-                if (file.ScrollOffset >= 0 && file.ScrollOffset < docHeight) return;
-                let fileCount = this.files.length;
-                let pageDirection = file.ScrollOffset >= docHeight ? 1 : -1;
-                this.pageIndex += pageDirection;
-                if (this.pageIndex < 0) this.pageIndex = 0;
-                if (this.pageIndex >= fileCount) this.pageIndex = fileCount;
-                this.renderContainer.innerHTML = "";
-                this.render();
-            });
+            let scrollOffset = this.scrollOffsets[this.currentPage];
+            iframe.contentWindow!.document.documentElement.scrollTo(0, scrollOffset);
         }
 
         return iframe;
     }
 
     render() {
-        let file = this.files[this.pageIndex];
+        let file = this.files[this.currentPage];
         let url = utils.staticFileUrl(file.Path);
         utils.downloadFile(url).then((content: string) => {
             let view = this.renderPage(content, file.ContentType);
