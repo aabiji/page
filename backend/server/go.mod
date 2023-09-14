@@ -1,3 +1,3 @@
-module github.com/aabiji/read/server
+module github.com/aabiji/page/server
 
 go 1.18

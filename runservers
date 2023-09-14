@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cd backend &&
+go build &&
+./page &
+cd frontend &&
+npm run dev &

@@ -1,3 +1,3 @@
-module github.com/aabiji/read/epub
+module github.com/aabiji/page/epub
 
 go 1.18

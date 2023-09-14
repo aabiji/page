@@ -17,12 +17,21 @@ export class EpubViewer {
     // The default CSS to apply for when the epub's XHTML/HTML files don't have adequate CSS.
     defaultCss: string = `
         body {
-            color: white;
             line-height: 2.0;
             text-indent: 25px;
             text-align: left;
             background-color: #1c1c1c;
             font-family: Arial, Helvetica, sans-serif;
+        }
+        body :not(a) {
+            color: white !important;
+        }
+        a {
+            color: #4287f5 !important;
+        }
+        pre, code {
+            color: white !important;
+            background-color: #101010 !important;
         }
     `;
 

@@ -7,6 +7,7 @@ import (
 	"golang.org/x/net/html"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -26,10 +27,10 @@ type Epub struct {
 	Files               []File
 	TableOfContents     [][2]string
 	IsFixedLayout       bool
-    CoverImagePath string
+	CoverImagePath      string
 	tableOfContentsPath string
 	contentFilename     string
-    coverPath string
+	coverPath           string
 }
 
 func New(filename string) (Epub, error) {
@@ -72,10 +73,10 @@ func (e *Epub) Debug() {
 	fmt.Printf("Contributor: %s\n", e.Info.Contributor)
 	fmt.Printf("Identifier: %s\n", e.Info.Identifier)
 	fmt.Printf("Fixed layout? %t\n", e.IsFixedLayout)
-    fmt.Println("Files: ")
-    for _, f := range e.Files {
-        fmt.Printf("Path %s | Content type: %s\n", f.Path, f.ContentType)
-    }
+	fmt.Println("Files: ")
+	for _, f := range e.Files {
+		fmt.Printf("Path %s | Content type: %s\n", f.Path, f.ContentType)
+	}
 	fmt.Println("Table of contents: ")
 	for _, l := range e.TableOfContents {
 		fmt.Printf("%s : %s \n", l[0], l[1])
@@ -141,7 +142,7 @@ func (e *Epub) getCoverPath(p Package, items map[string]string) {
 	}
 
 	// If there's no references in the guide node check if the meta nodes
-	if e.coverPath== "" {
+	if e.coverPath == "" {
 		for _, m := range p.Metadata.Meta {
 			if m.Name == "cover" {
 				e.coverPath = m.Content
@@ -161,30 +162,34 @@ func (e *Epub) getCoverPath(p Package, items map[string]string) {
 
 // Get an absolute path to the epub's cover image.
 func (e *Epub) getCoverImagePath() error {
-    fileParts := strings.Split(e.coverPath, ".")
-    extension := fileParts[len(fileParts) - 1]
-    if extension != "xhtml" && extension != "html" {
-        e.CoverImagePath = e.coverPath
-        return nil // Cover image path is already found
-    }
+	fileParts := strings.Split(e.coverPath, ".")
+	extension := fileParts[len(fileParts)-1]
+	if extension != "xhtml" && extension != "html" {
+		e.CoverImagePath = e.coverPath
+		return nil // Cover image path is already found
+	}
 
-    document, err := ParseHTML(e.coverPath)
-    if err != nil {
-        return err
-    }
+	document, err := ParseHTML(e.coverPath)
+	if err != nil {
+		return err
+	}
 
-    imageNode := FindNode(document, "img")
-    if imageNode == nil {
-        imageNode = FindNode(document, "image")
-    }
+	imageNode := FindNode(document, "img")
+	if imageNode == nil {
+		imageNode = FindNode(document, "image")
+	}
 
-    e.CoverImagePath = FindAttribute(imageNode, "src", "")
-    if e.CoverImagePath == "" {
-        e.CoverImagePath = FindAttribute(imageNode, "href", "")
-    }
+	if imageNode == nil {
+		return nil // Epub doesn't have cover image
+	}
 
-    e.CoverImagePath = e.bookPath(e.CoverImagePath)
-    return nil
+	e.CoverImagePath = FindAttribute(imageNode, "src", "")
+	if e.CoverImagePath == "" {
+		e.CoverImagePath = FindAttribute(imageNode, "href", "")
+	}
+
+	e.CoverImagePath = e.bookPath(e.CoverImagePath)
+	return nil
 }
 
 // Get the contents of the css files linked in a html document's head node.
@@ -296,17 +301,17 @@ func (e *Epub) processFile(relativePath string) (File, error) {
 
 	filenameParts := strings.Split(f.Path, ".")
 	extension := filenameParts[len(filenameParts)-1]
-    if extension == "html" {
-        f.ContentType = "text/html"
-    } else if extension == "xhtml" {
-        f.ContentType = "application/xhtml+xml"
-    }
+	if extension == "html" {
+		f.ContentType = "text/html"
+	} else if extension == "xhtml" {
+		f.ContentType = "application/xhtml+xml"
+	}
 
-    var err error
-    f.document, err = ParseHTML(f.Path)
-    if err != nil {
-        return File{}, err
-    }
+	var err error
+	f.document, err = ParseHTML(f.Path)
+	if err != nil {
+		return File{}, err
+	}
 
 	err = e.updateFile(&f)
 	if err != nil {
@@ -314,6 +319,13 @@ func (e *Epub) processFile(relativePath string) (File, error) {
 	}
 
 	return f, nil
+}
+
+// Remove html tag elements from the epub description
+func (e *Epub) cleanDescription() {
+	htmlTagRegex := "<[^>]*>"
+	regex := regexp.MustCompile(htmlTagRegex)
+	e.Info.Description = string(regex.ReplaceAll([]byte(e.Info.Description), []byte{}))
 }
 
 func (e *Epub) parseContent() error {
@@ -337,8 +349,11 @@ func (e *Epub) parseContent() error {
 	}
 
 	e.Info = p.Metadata
+	e.cleanDescription()
+
 	e.getCoverPath(p, items)
-    e.getCoverImagePath()
+	e.getCoverImagePath()
+
 	e.tableOfContentsPath = e.bookPath(items[p.Spine.TableOfContents])
 	return nil
 }

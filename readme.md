@@ -10,5 +10,12 @@ Goals:
 - Nice app UI/UX, especially for the ebook paginated rendering
 - Interoperate with different services (Amazon, Apple itunes, Google Play ...)
 
+Todo:
+- fix links in rendered epub file
+- better scrolling with images
+- don't want to be scrolling images -- fit height to container
+- default cover image for epub that doesn't have one
+- default utf-8 encoding for all epub files (think of -? in Dune rendering)
+
 This project is currently still actively being developped.
 ![Current app state](misc/screenshot.png)

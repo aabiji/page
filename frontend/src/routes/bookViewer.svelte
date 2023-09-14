@@ -31,9 +31,10 @@
     onMount(() => {
         let div = document.getElementById("book-view")!;
 
-        getBookInfo("Dune").then((json) => {
+        getBookInfo("LePetitPrince").then((json) => {
             if ("Server error" in json) {
                 errorOut = true;
+                console.log(json);
                 return;
             }
 
@@ -87,6 +88,11 @@
 {/if}
 
 <style>
+    a {
+        color: #4287f5;
+        text-decoration: none;
+    }
+
     .container {
         display: flex;
     }
@@ -112,11 +118,6 @@
 
     .left-sidepanel p {
         font-size: 15px;
-    }
-
-    .left-sidepanel a {
-        color: white;
-        text-decoration: none;
     }
 
     .left-sidepanel img {

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/aabiji/read/epub"
+	"github.com/aabiji/page/epub"
 	"github.com/gorilla/mux"
 	"net/http"
 )
