@@ -5,10 +5,6 @@
     import { EpubViewer } from "./epub";
     import * as utils from "./utils";
 
-    function getBookInfo(name: string) {
-        return utils.callApi(`http://localhost:8080/book/get/${name}`, "GET", {});
-    }
-
     let errorOut = false;
     let book = writable({
         CurrentPage: 0,
@@ -33,10 +29,8 @@
         },
     });
 
-    onMount(() => {
-        let div = document.getElementById("book-view")!;
-
-        getBookInfo("Dune").then((json) => {
+    function getBook(name: string, div: HTMLElement) {
+        utils.callApi(`http://localhost:8080/book/get/${name}`, "GET", {}).then((json) => {
             if ("Server error" in json) {
                 errorOut = true;
                 console.log(json);
@@ -49,6 +43,13 @@
             let e = new EpubViewer(json.FileScrollOffsets, json.Epub.Files, json.CurrentPage, div);
             e.render();
         });
+    }
+
+    onMount(() => {
+        let div = document.getElementById("book-view")!;
+        utils.callApi("http://localhost:8080/cookie", "GET", {}).then((() => {
+            getBook("Dune", div);
+        }));
     });
 </script>
 

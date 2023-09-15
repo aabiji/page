@@ -6,6 +6,7 @@ import (
 	"github.com/aabiji/page/epub"
 	"github.com/gorilla/mux"
 	"net/http"
+    "time"
 )
 
 func handleError(w http.ResponseWriter, err error) {
@@ -13,6 +14,22 @@ func handleError(w http.ResponseWriter, err error) {
 		"Server error": fmt.Sprintf("%s", err.Error()),
 	})
 	w.Write(j)
+}
+
+func setExampleCookie(w http.ResponseWriter, r *http.Request) {
+    cookie := http.Cookie{
+        Name: "userId",
+        Value: "user123",
+        Secure: true,
+        SameSite: http.SameSiteNoneMode,
+        Expires: time.Now().Add(364 * 24 * time.Second),
+    }
+    http.SetCookie(w, &cookie)
+
+    message := map[string]string{
+        "Status": "Cookie set",
+    }
+    json.NewEncoder(w).Encode(message)
 }
 
 func getBookInfo(w http.ResponseWriter, r *http.Request) {
@@ -25,6 +42,13 @@ func getBookInfo(w http.ResponseWriter, r *http.Request) {
 		handleError(w, err)
 		return
 	}
+
+    c, err := r.Cookie("userId")
+    if err != nil {
+        handleError(w, err)
+        return
+    }
+    fmt.Println(c.Name, c.Value)
 
 	scrollOffsets := []int{}
 	for i := 0; i < len(book.Files); i++ {

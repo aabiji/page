@@ -1,7 +1,10 @@
 
 export async function callApi(url: string, method: string, json: object): Promise<any> {
-    let payload = { method: method, mode: "cors" };
-    if (method == "POST") payload.body = json;
+    let payload = {
+        method: method,
+        body: method == "POST" ? json : null,
+        credentials: "include",
+    };
     const response = await fetch(url, payload);
     return response.json();
 }
