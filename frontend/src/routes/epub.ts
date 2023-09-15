@@ -81,7 +81,6 @@ export class EpubViewer {
         else if (this.currentPage == this.files.length)
             this.currentPage = 0;
 
-        this.renderContainer.innerHTML = "";
         this.render();
     }
 
@@ -105,6 +104,7 @@ export class EpubViewer {
     }
 
     render() {
+        this.renderContainer.innerHTML = "";
         let file = this.files[this.currentPage];
         let url = utils.staticFileUrl(file.Path);
         utils.downloadFile(url).then((content: string) => {

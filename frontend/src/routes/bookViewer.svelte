@@ -1,49 +1,50 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { writable } from "svelte/store";
+
     import { EpubViewer } from "./epub";
     import * as utils from "./utils";
-    
+
     function getBookInfo(name: string) {
         return utils.callApi(`http://localhost:8080/book/get/${name}`, "GET", {});
     }
 
     let errorOut = false;
-    let userBook = {
+    let book = writable({
         CurrentPage: 0,
-        Info: {
-            Author: "",
-            Contributor: "",
-            Coverage: "",
-            Date: "",
-            Description: "",
-            Identifier: "",
-            Language: "",
-            Publisher: "",
-            Relation: "",
-            Rights: "",
-            Source: "",
-            Subjects: [],
-            Title: "",
+        Epub: {
+            CoverImagePath: "",
+            Info: {
+                Author: "",
+                Contributor: "",
+                Coverage: "",
+                Date: "",
+                Description: "",
+                Identifier: "",
+                Language: "",
+                Publisher: "",
+                Relation: "",
+                Rights: "",
+                Source: "",
+                Subjects: [],
+                Title: "",
+            },
+            TableOfContents: [],
         },
-        TableOfContents: [],
-        CoverImagePath: "",
-    };
+    });
+
     onMount(() => {
         let div = document.getElementById("book-view")!;
 
-        getBookInfo("LePetitPrince").then((json) => {
+        getBookInfo("Dune").then((json) => {
             if ("Server error" in json) {
                 errorOut = true;
                 console.log(json);
                 return;
             }
 
-            userBook.Info = json.Epub.Info;
-            if (userBook.Info.Subjects == null)
-                userBook.Info.Subjects = ["-"];
-
-            userBook.TableOfContents = json.Epub.TableOfContents;
-            userBook.CoverImagePath = utils.staticFileUrl(json.Epub.CoverImagePath);
+            json.Epub.CoverImagePath = utils.staticFileUrl(json.Epub.CoverImagePath);
+            book.set(json);
 
             let e = new EpubViewer(json.FileScrollOffsets, json.Epub.Files, json.CurrentPage, div);
             e.render();
@@ -58,26 +59,26 @@
 {:else}
 <div class="container">
     <div class="left-sidepanel">
-        <h1> {userBook.Info.Title} </h1>
-        <img alt="Ebook cover image" src={userBook.CoverImagePath}/>
-        <h3> {userBook.Info.Author} </h3>
+        <h1> {$book.Epub.Info.Title} </h1>
+        <img alt="Ebook cover image" src={$book.Epub.CoverImagePath}/>
+        <h3> {$book.Epub.Info.Author} </h3>
         <hr>
-        <h5> {userBook.Info.Description} </h5>
-        <p> Date: {userBook.Info.Date} </p>
-        <p> Contributor: {userBook.Info.Contributor} </p>
-        <p> Coverage: {userBook.Info.Coverage} </p>
-        <p> Source: {userBook.Info.Source} </p>
-        <p> Rights: {userBook.Info.Rights} </p>
-        <p> Relation: {userBook.Info.Relation} </p>
-        <p> Publisher: {userBook.Info.Publisher} </p>
-        <p> Language: {userBook.Info.Language} </p>
-        <p> Identifier: {userBook.Info.Identifier} </p>
-        <p> Subjects: {#each userBook.Info.Subjects as subject} {subject}  {/each} </p>
+        <h5> {$book.Epub.Info.Description} </h5>
+        <p> Date: {$book.Epub.Info.Date} </p>
+        <p> Contributor: {$book.Epub.Info.Contributor} </p>
+        <p> Coverage: {$book.Epub.Info.Coverage} </p>
+        <p> Source: {$book.Epub.Info.Source} </p>
+        <p> Rights: {$book.Epub.Info.Rights} </p>
+        <p> Relation: {$book.Epub.Info.Relation} </p>
+        <p> Publisher: {$book.Epub.Info.Publisher} </p>
+        <p> Language: {$book.Epub.Info.Language} </p>
+        <p> Identifier: {$book.Epub.Info.Identifier} </p>
+        <p> Subjects: {#each $book.Epub.Info.Subjects as subject} {subject}  {/each} </p>
         <hr>
         <h3> Table of contents </h3>
         <ol>
-            {#each userBook.TableOfContents as section}
-                <li><a href={section[1]}>{section[0]}</a></li>
+            {#each $book.Epub.TableOfContents as section}
+                <li><a href={section.Path}>{section.Name}</a></li>
             {/each}
         </ol>
     </div>
