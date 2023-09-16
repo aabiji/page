@@ -44,15 +44,15 @@ func ServeFiles(router *mux.Router) {
 
 func Run(addr string) {
 	router := mux.NewRouter()
-    router.HandleFunc("/cookie", setExampleCookie).Methods("GET")
+	router.HandleFunc("/cookie", setExampleCookie).Methods("GET")
 	router.HandleFunc("/book/get/{name}", getBookInfo).Methods("GET")
 	//corsRouter := cors.Default().Handler(router)
-    corsRouter := cors.New(cors.Options{
-        AllowCredentials: true,
-        AllowedHeaders: []string{"*"},
-        AllowedMethods: []string{"GET", "POST"},
-        AllowedOrigins: []string{"http://localhost:5173"},
-    }).Handler(router)
+	corsRouter := cors.New(cors.Options{
+		AllowCredentials: true,
+		AllowedHeaders:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST"},
+		AllowedOrigins:   []string{"http://localhost:5173"},
+	}).Handler(router)
 	ServeFiles(router)
 
 	fmt.Printf("Running server on http://%s\n", addr)

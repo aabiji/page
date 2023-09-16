@@ -48,7 +48,7 @@
     onMount(() => {
         let div = document.getElementById("book-view")!;
         utils.callApi("http://localhost:8080/cookie", "GET", {}).then((() => {
-            getBook("Dune", div);
+            getBook("AnimalFarm", div);
         }));
     });
 </script>
