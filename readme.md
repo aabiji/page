@@ -12,10 +12,6 @@ Goals:
 
 Todo:
 - fix links in rendered epub file
-- better scrolling with images
-- don't want to be scrolling images -- fit height to container
-- default cover image for epub that doesn't have one
-- default utf-8 encoding for all epub files (think of -? in Dune rendering)
 - mock users book storage (using sqlite as the demo db for now)
 - http request to get user books from database
 - start user collection ui

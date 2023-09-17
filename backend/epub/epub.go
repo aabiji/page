@@ -16,10 +16,9 @@ import (
 var STORAGE_DIRECTORY string
 
 type File struct {
-	ContentType string
-	Path        string // Path to file used in url. ex. BookName/Directory/File.html
-	localPath   string // On disk path to file. ex. /BOOKS/BookName/Directory/File.html
-	document    *html.Node
+	Path      string // Path to file used in url. ex. BookName/Directory/File.html
+	localPath string // On disk path to file. ex. /BOOKS/BookName/Directory/File.html
+	document  *html.Node
 }
 
 type Section struct {
@@ -81,7 +80,7 @@ func (e *Epub) Debug() {
 	fmt.Printf("Fixed layout? %t\n", e.IsFixedLayout)
 	fmt.Println("Files: ")
 	for _, f := range e.Files {
-		fmt.Printf("URL Path %s | Local Path %s | Content type: %s\n", f.Path, f.localPath, f.ContentType)
+		fmt.Printf("URL Path %s | Local Path %s\n", f.Path, f.localPath)
 	}
 	fmt.Println("Table of contents: ")
 	for _, t := range e.TableOfContents {
@@ -309,14 +308,6 @@ func (e *Epub) updateFile(f *File) error {
 func (e *Epub) processFile(relativePath string) (File, error) {
 	f := File{localPath: e.absolutePath(relativePath)}
 	f.Path = e.urlPath(relativePath)
-
-	filenameParts := strings.Split(f.localPath, ".")
-	extension := filenameParts[len(filenameParts)-1]
-	if extension == "html" {
-		f.ContentType = "text/html"
-	} else if extension == "xhtml" {
-		f.ContentType = "application/xhtml+xml"
-	}
 
 	var err error
 	f.document, err = ParseHTML(f.localPath)

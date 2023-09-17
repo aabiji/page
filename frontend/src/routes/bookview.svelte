@@ -25,7 +25,10 @@
                 Subjects: [],
                 Title: "",
             },
-            TableOfContents: [],
+            TableOfContents: [{
+                Path: "",
+                Name: "",
+            }],
         },
     });
 
@@ -37,7 +40,11 @@
                 return;
             }
 
-            json.Epub.CoverImagePath = utils.staticFileUrl(json.Epub.CoverImagePath);
+            if (json.Epub.CoverImagePath == "") {
+                json.Epub.CoverImagePath = "default-cover-image.png";
+            } else {
+                json.Epub.CoverImagePath = utils.staticFileUrl(json.Epub.CoverImagePath);
+            }
             book.set(json);
 
             let e = new EpubViewer(json.FileScrollOffsets, json.Epub.Files, json.CurrentPage, div);
@@ -48,7 +55,7 @@
     onMount(() => {
         let div = document.getElementById("book-view")!;
         utils.callApi("http://localhost:8080/cookie", "GET", {}).then((() => {
-            getBook("AnimalFarm", div);
+            getBook("LePetitPrince", div);
         }));
     });
 </script>
