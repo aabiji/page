@@ -6,6 +6,9 @@
     import * as utils from "./utils";
 
     let errorOut = false;
+    let bookView: HTMLElement;
+    let toggleButton: HTMLElement;
+    let leftSidepanl: HTMLElement;
     let book = writable({
         CurrentPage: 0,
         Epub: {
@@ -31,15 +34,24 @@
             }],
         },
     });
+    let epub = writable(new EpubViewer([], [], 0));
 
-    let toggleButton: HTMLElement;
-    let leftSidepanl: HTMLElement;
     function toggelLeftSidepanel() {
         toggleButton.classList.toggle("left");
         leftSidepanl.classList.toggle("hidden-left-sidepanel");
     }
 
-    function getBook(name: string, div: HTMLElement) {
+    function jumpToSection(sectionPath: string) {
+        let files = $epub.files.map((f: File) => f.Path);
+        let sectionParts = sectionPath.split("#");
+        let section = sectionParts[1] == undefined ? "" : sectionParts[1];
+        let index = files.indexOf(sectionParts[0]);
+        $epub.pageIdx = index;
+        $epub.sections[index] = section;
+        $epub.render();
+    }
+
+    function getBook(name: string) {
         utils.callApi(`http://localhost:8080/book/get/${name}`, "GET", {}).then((json) => {
             if ("Server error" in json) {
                 errorOut = true;
@@ -54,15 +66,14 @@
             }
             book.set(json);
 
-            let e = new EpubViewer(json.FileScrollOffsets, json.Epub.Files, json.CurrentPage, div);
-            e.render();
+            epub.set(new EpubViewer(json.FileScrollOffsets, json.Epub.Files, json.CurrentPage, bookView));
+            $epub.render();
         });
     }
 
     onMount(() => {
-        let div = document.getElementById("book-view")!;
         utils.callApi("http://localhost:8080/cookie", "GET", {}).then((() => {
-            getBook("Dune", div);
+            getBook("med");
         }));
     });
 </script>
@@ -93,7 +104,7 @@
         <h3> Table of contents </h3>
         <ol>
             {#each $book.Epub.TableOfContents as section}
-                <li><a href={section.Path}>{section.Name}</a></li>
+                <li><span on:click={jumpToSection(section.Path)}>{section.Name}</span></li>
             {/each}
         </ol>
     </div>
@@ -104,17 +115,18 @@
         &gt;
     </button>
     <div class="right-sidepanel">
-        <div id="book-view"></div>
+        <div bind:this={bookView} id="book-view"></div>
     </div>
 </div>
 {/if}
 
 <style>
-    a {
+    span {
         color: #4287f5;
+        cursor: pointer;
         text-decoration: none;
     }
-    a:hover {
+    span:hover {
         color: #5a98fa;
     }
 
