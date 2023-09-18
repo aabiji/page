@@ -32,6 +32,13 @@
         },
     });
 
+    let toggleButton: HTMLElement;
+    let leftSidepanl: HTMLElement;
+    function toggelLeftSidepanel() {
+        toggleButton.classList.toggle("left");
+        leftSidepanl.classList.toggle("hidden-left-sidepanel");
+    }
+
     function getBook(name: string, div: HTMLElement) {
         utils.callApi(`http://localhost:8080/book/get/${name}`, "GET", {}).then((json) => {
             if ("Server error" in json) {
@@ -55,7 +62,7 @@
     onMount(() => {
         let div = document.getElementById("book-view")!;
         utils.callApi("http://localhost:8080/cookie", "GET", {}).then((() => {
-            getBook("LePetitPrince", div);
+            getBook("Dune", div);
         }));
     });
 </script>
@@ -66,7 +73,7 @@
 </div>
 {:else}
 <div class="container">
-    <div class="left-sidepanel">
+    <div class="left-sidepanel" bind:this={leftSidepanl}>
         <h1> {$book.Epub.Info.Title} </h1>
         <img alt="Ebook cover image" src={$book.Epub.CoverImagePath}/>
         <h3> {$book.Epub.Info.Author} </h3>
@@ -90,6 +97,12 @@
             {/each}
         </ol>
     </div>
+    <button class="left-sidepanel-toggle"
+            bind:this={toggleButton}
+            title="Toggle sidepanel visiblity"
+            on:click={toggelLeftSidepanel}>
+        &gt;
+    </button>
     <div class="right-sidepanel">
         <div id="book-view"></div>
     </div>
@@ -101,9 +114,14 @@
         color: #4287f5;
         text-decoration: none;
     }
+    a:hover {
+        color: #5a98fa;
+    }
 
     .container {
         display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     #book-view {
@@ -137,5 +155,29 @@
 
     .left-sidepanel h1, h3, h5 {
         text-align: center;
+    }
+
+    .left-sidepanel-toggle {
+        height: 35px;
+        border: none;
+        color: white;
+        cursor: pointer;
+        margin-left: -10px;
+        align-content: flex-start;
+        background-color: #1e63d4;
+    }
+
+    .left-sidepanel-toggle:hover {
+        background-color: #1757bf;
+    }
+
+    :global(.left-sidepanel-toggle.left) {
+        left: 0px;
+        position: absolute;
+        margin-left: 0px !important;
+    }
+
+    :global(.hidden-left-sidepanel) {
+        display: none;
     }
 </style>

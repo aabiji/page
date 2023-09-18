@@ -36,6 +36,9 @@ export class EpubViewer {
         a {
             color: #4287f5 !important;
         }
+        a:hover {
+            color: #5a98fa !important;
+        }
         pre, code {
             color: white !important;
             background-color: #101010 !important;
