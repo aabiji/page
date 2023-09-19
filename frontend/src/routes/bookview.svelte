@@ -41,16 +41,6 @@
         leftSidepanl.classList.toggle("hidden-left-sidepanel");
     }
 
-    function jumpToSection(sectionPath: string) {
-        let files = $epub.files.map((f: File) => f.Path);
-        let sectionParts = sectionPath.split("#");
-        let section = sectionParts[1] == undefined ? "" : sectionParts[1];
-        let index = files.indexOf(sectionParts[0]);
-        $epub.pageIdx = index;
-        $epub.sections[index] = section;
-        $epub.render();
-    }
-
     function getBook(name: string) {
         utils.callApi(`http://localhost:8080/book/get/${name}`, "GET", {}).then((json) => {
             if ("Server error" in json) {
@@ -104,7 +94,7 @@
         <h3> Table of contents </h3>
         <ol>
             {#each $book.Epub.TableOfContents as section}
-                <li><span on:click={jumpToSection(section.Path)}>{section.Name}</span></li>
+                <li><span on:click={$epub.jumpToSection(section.Path)}>{section.Name}</span></li>
             {/each}
         </ol>
     </div>

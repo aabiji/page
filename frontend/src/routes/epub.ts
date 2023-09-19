@@ -1,18 +1,13 @@
 import * as utils from "./utils";
 
-interface File {
-    Path: string;
-}
-
 export class EpubViewer {
     // HTMl/XHTML files within the epub file.
-    files: File[];
+    files: string[];
     // Vertical scrolling offsets within the HTML/XHTML files.
     scrolls: number[];
     // The amount to vertically scroll at once.
     // Is set to the height of the renderContainer minus some padding.
     scrollStep: number;
-    sections: string[] = [];
     // The amount of padding to remove from scrollStep
     // to ensure that text near the document edges remain fully visible.
     pad: number;
@@ -46,7 +41,7 @@ export class EpubViewer {
         }
     `;
 
-    constructor(scrollOffsets: number[], files: File[], pageIdx: number, container?: HTMLElement) {
+    constructor(scrollOffsets: number[], files: string[], pageIdx: number, container?: HTMLElement) {
         this.pad = 10;
         this.files = files;
         this.pageIdx = pageIdx;
@@ -66,15 +61,24 @@ export class EpubViewer {
     }
 
     private imageAttributes() {
-        return this.files[this.pageIdx].Path.endsWith(".html")
+        return this.files[this.pageIdx].endsWith(".html")
                  ? {tag: "img", source: "src"}
                  : {tag: "image", source: "xlink:href"};
     }
 
     private injectDefaultCSS(doc: Document) {
-        let style = document.createElement("style");
+        let style = doc.createElement("style");
         style.textContent = this.defaultCss;
         doc.head.appendChild(style);
+    }
+
+    // TODO: jump to section for links in document
+    jumpToSection(sectionPath: string) {
+        let sectionParts = sectionPath.split("#");
+        let section = sectionParts[1] == undefined ? "" : sectionParts[1];
+        let index = this.files.indexOf(sectionParts[0]);
+        this.pageIdx = index;
+        this.render(section);
     }
 
     private correctImageLinks(doc: Document) {
@@ -119,9 +123,8 @@ export class EpubViewer {
         let scrollOffset = this.scrolls[this.pageIdx];
         const scrollDirection = event.clientX > this.containerMidPoint ? 1 : -1;
         scrollOffset += this.scrollStep * scrollDirection;
-        scrollOffset = Math.max(-1, Math.min(scrollOffset, this.docHeight(iframe)));
-        iframe.contentWindow!.document.documentElement.scrollTo(0, scrollOffset);
-        this.sections[this.pageIdx] = "";
+        scrollOffset = Math.max(-2, Math.min(scrollOffset, this.docHeight(iframe)));
+        iframe.contentWindow!.scrollTo({top: scrollOffset, behavior: "smooth"});
         this.scrolls[this.pageIdx] = scrollOffset;
 
         const overflow = scrollOffset < 0 || scrollOffset >= this.docHeight(iframe);
@@ -131,27 +134,12 @@ export class EpubViewer {
         }
 
         const pageDirection = scrollOffset >= this.docHeight(iframe) ? 1 : -1;
-        this.pageIdx = Math.max(0, Math.min(this.pageIdx + pageDirection, this.files.length - 1));
+        this.pageIdx = Math.max(0, Math.min(this.pageIdx + pageDirection, this.files.length-1));
         this.render();
     }
 
-    private scrollTo(targetWindow: Window, y: number, duration: number) {
-        const startY = targetWindow.scrollY;
-        const startTime = performance.now();
-        const step = (timestamp: number) => {
-            const currentTime = timestamp - startTime;
-            const progress = Math.min(currentTime / duration, 1);
-            const newY = startY + (y - startY) * progress;
-
-            if (progress < 0) return;
-            targetWindow.scrollTo(0, newY);
-            if (progress < 1) targetWindow.requestAnimationFrame(step);
-        }
-        targetWindow.requestAnimationFrame(step);
-    }
-
-    private renderPage(content: string) {
-        let contentType = this.files[this.pageIdx].Path.endsWith(".html") ? "text/html" : "application/xhtml+xml";
+    private renderPage(content: string, elementId: string) {
+        let contentType = this.files[this.pageIdx].endsWith(".html") ? "text/html" : "application/xhtml+xml";
         const doc = new DOMParser().parseFromString(content, contentType as DOMParserSupportedType);
         this.injectDefaultCSS(doc);
         this.correctImageLinks(doc);
@@ -164,23 +152,25 @@ export class EpubViewer {
             iframe.contentDocument!.addEventListener("click", (event) => {
                 this.scrollCurrentPage(iframe, event);
             });
-
             this.adjustLastImageHeight(iframe);
-            let doc = iframe.contentWindow!.document;
-            this.scrollTo(iframe.contentWindow!, this.scrolls[this.pageIdx], 1000);
 
-            let section = doc.getElementById(this.sections[this.pageIdx]);
-            if (section != undefined) section.scrollIntoView({behavior: "smooth"});
+            let iwindow = iframe.contentWindow!;
+            let targetElement = iwindow.document.getElementById(elementId);
+            if (targetElement != undefined) {
+                this.scrolls[this.pageIdx] = targetElement.getBoundingClientRect().y;
+            }
+            iwindow.scrollTo({top: this.scrolls[this.pageIdx], behavior: "smooth"});
         }
 
         return iframe;
     }
 
-    async render() {
+    // elementId specifies the optional element to jump to when rendering iframe contents.
+    async render(elementId: string = "") {
         this.renderContainer.innerHTML = "";
-        let url = utils.staticFileUrl(this.files[this.pageIdx].Path);
+        let url = utils.staticFileUrl(this.files[this.pageIdx]);
         const html = await utils.downloadFile(url);
-        let view = this.renderPage(html);
+        let view = this.renderPage(html, elementId);
         this.renderContainer.appendChild(view);
     }
 }

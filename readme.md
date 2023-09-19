@@ -10,11 +10,5 @@ Goals:
 - Nice app UI/UX, especially for the ebook paginated rendering
 - Interoperate with different services (Amazon, Apple itunes, Google Play ...)
 
-Todo:
-- fix links in rendered epub file
-- mock users book storage (using sqlite as the demo db for now)
-- http request to get user books from database
-- start user collection ui
-
 This project is currently still actively being developped.
 ![Current app state](assets/screenshot.png)

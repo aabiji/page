@@ -15,12 +15,6 @@ import (
 // Set by Storage struct in the server module.
 var STORAGE_DIRECTORY string
 
-type File struct {
-	Path      string // Path to file used in url. ex. BookName/Directory/File.html
-	localPath string // On disk path to file. ex. /BOOKS/BookName/Directory/File.html
-	document  *html.Node
-}
-
 type Section struct {
 	Path string
 	Name string
@@ -29,7 +23,7 @@ type Section struct {
 type Epub struct {
 	Name                string
 	Info                Metadata
-	Files               []File
+	Files               []string
 	TableOfContents     []Section
 	IsFixedLayout       bool
 	CoverImagePath      string
@@ -80,7 +74,7 @@ func (e *Epub) Debug() {
 	fmt.Printf("Fixed layout? %t\n", e.IsFixedLayout)
 	fmt.Println("Files: ")
 	for _, f := range e.Files {
-		fmt.Printf("URL Path %s | Local Path %s\n", f.Path, f.localPath)
+		fmt.Printf("URL Path %s | Local Path %s\n", f, e.absolutePath(f))
 	}
 	fmt.Println("Table of contents: ")
 	for _, t := range e.TableOfContents {
@@ -230,10 +224,10 @@ func (e *Epub) getLinkedCSS(head *html.Node) (string, error) {
 }
 
 // Inject a style node containing css into the file's html document
-func (e *Epub) injectCSS(f *File) error {
-	head := FindNode(f.document, "head")
+func (e *Epub) injectCSS(root *html.Node) error {
+	head := FindNode(root, "head")
 	if head == nil {
-		return errors.New(fmt.Sprintf("Head not found in %s", f.localPath))
+		return errors.New(fmt.Sprintf("<head></head> not found"))
 	}
 
 	css, err := e.getLinkedCSS(head)
@@ -272,55 +266,81 @@ func (e *Epub) fixImageLinks(root *html.Node) error {
 	return nil
 }
 
-// Replace a html file with a html document that embeds all of its styling.
-// Replace relative paths to images with absolute paths.
-func (e *Epub) updateFile(f *File) error {
-	err := e.injectCSS(f)
-	if err != nil {
-		return err
+func (e *Epub) fixFileLinks(root *html.Node) error {
+	if root == nil {
+		return nil
 	}
 
-	err = e.fixImageLinks(f.document)
-	if err != nil {
-		return err
+	if root.Type == html.ElementNode && root.Data == "a" {
+		link := FindAttribute(root, "href", "")
+		if link == "" {
+			return nil
+		}
+
+		urlMatch := `^(https?|ftp)://[^\s/$.?#].[^\s]*$`
+		regex := regexp.MustCompile(urlMatch)
+		matched := regex.Match([]byte(link))
+		if matched {
+			return nil
+		}
+
+		link = e.urlPath(link)
+		SetAttribute(root, "href", link)
 	}
 
-	var htmlBytes bytes.Buffer
-	err = html.Render(&htmlBytes, f.document)
-	if err != nil {
-		return err
-	}
-
-	file, err := os.OpenFile(f.localPath, os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	_, err = file.Write(htmlBytes.Bytes())
-	if err != nil {
-		return err
+	for node := root.FirstChild; node != nil; node = node.NextSibling {
+		e.fixFileLinks(node)
 	}
 
 	return nil
 }
 
-func (e *Epub) processFile(relativePath string) (File, error) {
-	f := File{localPath: e.absolutePath(relativePath)}
-	f.Path = e.urlPath(relativePath)
+// Replace a html file with a html document that embeds all of its styling.
+// Replace relative paths to images within the document with absolute paths.
+// Replace relative paths to files within the document with the url paths.
+func (e *Epub) processFile(relativePath string) (string, error) {
+	fileUrlPath := e.urlPath(relativePath)
+	path := e.absolutePath(relativePath)
 
 	var err error
-	f.document, err = ParseHTML(f.localPath)
+	document, err := ParseHTML(path)
 	if err != nil {
-		return File{}, err
+		return "", err
 	}
 
-	err = e.updateFile(&f)
+	err = e.injectCSS(document)
 	if err != nil {
-		return File{}, err
+		return "", err
 	}
 
-	return f, nil
+	err = e.fixImageLinks(document)
+	if err != nil {
+		return "", err
+	}
+
+	err = e.fixFileLinks(document)
+	if err != nil {
+		return "", err
+	}
+
+	var htmlBytes bytes.Buffer
+	err = html.Render(&htmlBytes, document)
+	if err != nil {
+		return "", err
+	}
+
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	_, err = file.Write(htmlBytes.Bytes())
+	if err != nil {
+		return "", err
+	}
+
+	return fileUrlPath, nil
 }
 
 // Remove html tag elements from the epub description
@@ -343,11 +363,11 @@ func (e *Epub) parseContent() error {
 	}
 
 	for _, i := range p.Spine.ITemRefs {
-		file, err := e.processFile(items[i.Ref])
+		fileUrlPath, err := e.processFile(items[i.Ref])
 		if err != nil {
 			return err
 		}
-		e.Files = append(e.Files, file)
+		e.Files = append(e.Files, fileUrlPath)
 	}
 
 	e.Info = p.Metadata
