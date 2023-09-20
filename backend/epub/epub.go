@@ -241,32 +241,7 @@ func (e *Epub) injectCSS(root *html.Node) error {
 	return nil
 }
 
-// Replace relative paths to images in a file's html document with absolute paths
-func (e *Epub) fixImageLinks(root *html.Node) error {
-	if root == nil {
-		return nil
-	}
-
-	if root.Type == html.ElementNode && root.Data == "image" || root.Data == "img" {
-		var imgSrc string
-		if root.Data == "image" {
-			imgSrc = "href"
-		} else {
-			imgSrc = "src"
-		}
-
-		relativeImgPath := FindAttribute(root, imgSrc, "")
-		SetAttribute(root, imgSrc, e.urlPath(relativeImgPath))
-	}
-
-	for node := root.FirstChild; node != nil; node = node.NextSibling {
-		e.fixImageLinks(node)
-	}
-
-	return nil
-}
-
-func (e *Epub) fixFileLinks(root *html.Node) error {
+func (e *Epub) fixLinks(root *html.Node) error {
 	if root == nil {
 		return nil
 	}
@@ -283,13 +258,21 @@ func (e *Epub) fixFileLinks(root *html.Node) error {
 		if matched {
 			return nil
 		}
+		SetAttribute(root, "href", e.urlPath(link))
+	} else if root.Type == html.ElementNode && root.Data == "image" || root.Data == "img" {
+		var imgSrc string
+		if root.Data == "image" {
+			imgSrc = "href"
+		} else {
+			imgSrc = "src"
+		}
 
-		link = e.urlPath(link)
-		SetAttribute(root, "href", link)
+		relativeImgPath := FindAttribute(root, imgSrc, "")
+		SetAttribute(root, imgSrc, e.urlPath(relativeImgPath))
 	}
 
 	for node := root.FirstChild; node != nil; node = node.NextSibling {
-		e.fixFileLinks(node)
+		e.fixLinks(node)
 	}
 
 	return nil
@@ -313,12 +296,7 @@ func (e *Epub) processFile(relativePath string) (string, error) {
 		return "", err
 	}
 
-	err = e.fixImageLinks(document)
-	if err != nil {
-		return "", err
-	}
-
-	err = e.fixFileLinks(document)
+	err = e.fixLinks(document)
 	if err != nil {
 		return "", err
 	}

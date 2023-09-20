@@ -18,6 +18,6 @@ export async function downloadFile(url: string): Promise<string> {
 }
 
 export function staticFileUrl(file: string): string {
-    let netpath = file.replace(window.location.origin, "");
-    return `http://localhost:8080/static/${netpath}`;
+    file = file.replace(window.location.origin+"/", "");
+    return `http://localhost:8080/static/${file}`;
 }

@@ -72,22 +72,27 @@ export class EpubViewer {
         doc.head.appendChild(style);
     }
 
-    // TODO: jump to section for links in document
     jumpToSection(sectionPath: string) {
         let sectionParts = sectionPath.split("#");
         let section = sectionParts[1] == undefined ? "" : sectionParts[1];
         let index = this.files.indexOf(sectionParts[0]);
+        if (index == -1) return;
+        this.scrolls[this.pageIdx] = 0;
         this.pageIdx = index;
         this.render(section);
     }
 
-    private correctImageLinks(doc: Document) {
+    private correctLinks(doc: Document) {
         let attr = this.imageAttributes();
         let images = doc.getElementsByTagName(attr.tag);
         for (let image of images) {
             let source = image.getAttribute(attr.source)!;
             image.setAttribute(attr.source, utils.staticFileUrl(source));
         }
+
+        // NOTE: for now, all links are disabled
+        let links = doc.getElementsByTagName("a");
+        for (let link of links) link.removeAttribute("href");
     }
 
     private getLastImageWithinRange(iframe: HTMLIFrameElement, end: number): HTMLImageElement {
@@ -123,7 +128,7 @@ export class EpubViewer {
         let scrollOffset = this.scrolls[this.pageIdx];
         const scrollDirection = event.clientX > this.containerMidPoint ? 1 : -1;
         scrollOffset += this.scrollStep * scrollDirection;
-        scrollOffset = Math.max(-2, Math.min(scrollOffset, this.docHeight(iframe)));
+        scrollOffset = Math.max(-1, Math.min(scrollOffset, this.docHeight(iframe)));
         iframe.contentWindow!.scrollTo({top: scrollOffset, behavior: "smooth"});
         this.scrolls[this.pageIdx] = scrollOffset;
 
@@ -140,9 +145,9 @@ export class EpubViewer {
 
     private renderPage(content: string, elementId: string) {
         let contentType = this.files[this.pageIdx].endsWith(".html") ? "text/html" : "application/xhtml+xml";
-        const doc = new DOMParser().parseFromString(content, contentType as DOMParserSupportedType);
+        let doc = new DOMParser().parseFromString(content, contentType as DOMParserSupportedType);
         this.injectDefaultCSS(doc);
-        this.correctImageLinks(doc);
+        this.correctLinks(doc);
 
         let iframe = document.createElement("iframe");
         iframe.srcdoc = doc.documentElement.innerHTML;
