@@ -9,7 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/aabiji/page/epub"
+    "github.com/aabiji/page/backend/db"
+	"github.com/aabiji/page/backend/epub"
+
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 )
@@ -53,6 +55,8 @@ func Run(addr string) {
 		AllowedOrigins:   []string{"http://localhost:5173"},
 	}).Handler(router)
 	ServeFiles(router)
+
+    _ = db.NewDatabase()
 
 	fmt.Printf("Running server on http://%s\n", addr)
 	server := &http.Server{

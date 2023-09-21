@@ -16,8 +16,8 @@ import (
 var STORAGE_DIRECTORY string
 
 type Section struct {
-	Path string
-	Name string
+    Path string `json:"Path"`
+    Name string `json:"Name"`
 }
 
 type Epub struct {
@@ -25,7 +25,6 @@ type Epub struct {
 	Info                Metadata
 	Files               []string
 	TableOfContents     []Section
-	IsFixedLayout       bool
 	CoverImagePath      string
 	tableOfContentsPath string
 	contentFilename     string
@@ -71,7 +70,6 @@ func (e *Epub) Debug() {
 	fmt.Printf("Rights: %s\n", e.Info.Rights)
 	fmt.Printf("Contributor: %s\n", e.Info.Contributor)
 	fmt.Printf("Identifier: %s\n", e.Info.Identifier)
-	fmt.Printf("Fixed layout? %t\n", e.IsFixedLayout)
 	fmt.Println("Files: ")
 	for _, f := range e.Files {
 		fmt.Printf("URL Path %s | Local Path %s\n", f, e.absolutePath(f))
@@ -377,15 +375,6 @@ func (e *Epub) parseTableOfContents() error {
 	t, err := ParseXML[NCX](e.tableOfContentsPath)
 	if err != nil {
 		return err
-	}
-
-	for _, m := range t.Head.Metadata {
-		if m.Name == "dtb:totalPageCount" || m.Name == "dtb:maxPageNumber" {
-			if m.Content != "0" {
-				e.IsFixedLayout = true
-				break
-			}
-		}
 	}
 
 	e.TableOfContents = e.assembleTableOfContents(t.Map.NavPoints)

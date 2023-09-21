@@ -1,7 +1,8 @@
 # Page
 ***A elegant ebook reader and discovery platform***  
 Page is an elegant ebook reader and discovery app. It uses svelte with typescript for the frontend, 
-go for the backend and postgresql for the database (maybe we'll use firebase cloud storage????).
+go for the backend and postgresql for the database. In ./assets you will find
+shell scripts for running both servers and the database.
 
 Goals:
 - Cross platform experience
