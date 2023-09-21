@@ -46,7 +46,6 @@ func Run(addr string) {
 	router := mux.NewRouter()
 	router.HandleFunc("/cookie", setExampleCookie).Methods("GET")
 	router.HandleFunc("/book/get/{name}", getBookInfo).Methods("GET")
-	//corsRouter := cors.Default().Handler(router)
 	corsRouter := cors.New(cors.Options{
 		AllowCredentials: true,
 		AllowedHeaders:   []string{"*"},

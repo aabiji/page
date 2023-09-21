@@ -1,5 +1,12 @@
-<script lang="ts">
-    import BookViewer from "./bookview.svelte";
+<script>
+    import { onMount } from "svelte";
+    import { goto } from "$app/navigation";
+
+    onMount(() => {
+        if (document.cookie == "") {
+            goto("/auth");
+        }
+    });
 </script>
 
-<BookViewer />
+<h1> Hello to Page! </h1>

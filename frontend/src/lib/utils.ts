@@ -21,3 +21,7 @@ export function staticFileUrl(file: string): string {
     file = file.replace(window.location.origin+"/", "");
     return `http://localhost:8080/static/${file}`;
 }
+
+export function coverImagePath(file: string): string {
+    return file == "" ? "default-cover-image.png" : staticFileUrl(file);
+}

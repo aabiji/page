@@ -3,7 +3,9 @@
     import { writable } from "svelte/store";
 
     import { EpubViewer } from "./epub";
-    import * as utils from "./utils";
+    import * as utils from "$lib/utils";
+
+    export let bookName: string;
 
     let errorOut = false;
     let bookView: HTMLElement;
@@ -41,30 +43,21 @@
         leftSidepanl.classList.toggle("hidden-left-sidepanel");
     }
 
-    function getBook(name: string) {
-        utils.callApi(`http://localhost:8080/book/get/${name}`, "GET", {}).then((json) => {
+    onMount(() => {
+        utils.callApi(`http://localhost:8080/book/get/${bookName}`, "GET", {}).then((json) => {
             if ("Server error" in json) {
                 errorOut = true;
                 console.log(json);
                 return;
             }
 
-            if (json.Epub.CoverImagePath == "") {
-                json.Epub.CoverImagePath = "default-cover-image.png";
-            } else {
-                json.Epub.CoverImagePath = utils.staticFileUrl(json.Epub.CoverImagePath);
-            }
+            
+            json.Epub.CoverImagePath = utils.coverImagePath(json.Epub.CoverImagePath);
             book.set(json);
 
             epub.set(new EpubViewer(json.FileScrollOffsets, json.Epub.Files, json.CurrentPage, bookView));
             $epub.render();
         });
-    }
-
-    onMount(() => {
-        utils.callApi("http://localhost:8080/cookie", "GET", {}).then((() => {
-            getBook("med");
-        }));
     });
 </script>
 
@@ -112,12 +105,12 @@
 
 <style>
     span {
-        color: #4287f5;
         cursor: pointer;
         text-decoration: none;
+        color: var(--accent-color);
     }
     span:hover {
-        color: #5a98fa;
+        color: var(--accent-color-darken);
     }
 
     .container {
@@ -166,11 +159,11 @@
         cursor: pointer;
         margin-left: -10px;
         align-content: flex-start;
-        background-color: #1e63d4;
+        background-color: var(--accent-color);
     }
 
     .left-sidepanel-toggle:hover {
-        background-color: #1757bf;
+        background-color: var(--accent-color-darken);
     }
 
     :global(.left-sidepanel-toggle.left) {
