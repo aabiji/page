@@ -81,5 +81,6 @@
         justify-content: center;
         background-color: #1b1c1c;
         transform: translate(-50%, -50%);
+        box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
     }
 </style>
