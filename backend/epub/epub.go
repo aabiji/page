@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/net/html"
+    "io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -38,7 +39,7 @@ func New(filename string) (Epub, error) {
 
 	e := Epub{Name: GetFileBase(filename)}
 
-	if err := Unzip(filename, e.absolutePath()); err != nil {
+	if err := Unzip(filename, e.absolutePath("")); err != nil {
 		return Epub{}, err
 	}
 	if err := e.verifyMimetype(); err != nil {
@@ -81,28 +82,33 @@ func (e *Epub) Debug() {
 }
 
 // Path to a file inside the extracted epub file directory
-func (e *Epub) absolutePath(files ...string) string {
-	path := []string{STORAGE_DIRECTORY, e.Name} // BOOKS/<BOOK_NAME>
+func (e *Epub) absolutePath(file string) string {
+    basePath := filepath.Join(STORAGE_DIRECTORY, e.Name)
+    if file == "" {
+        return basePath
+    }
+    pathParts := strings.Split(file, "/")
+    targetFile := pathParts[len(pathParts) - 1]
 
-	temp := strings.Split(e.contentFilename, "/")
-	internalDirectories := temp[0 : len(temp)-1]
-	path = append(path, internalDirectories...)
+    var foundPath string
+    filepath.WalkDir(basePath, func(path string, info fs.DirEntry, err error) error {
+        if !info.IsDir() && targetFile == info.Name() {
+            foundPath = path
+            return filepath.SkipAll
+        }
+        return nil
+    })
 
-	for _, f := range files {
-		pathParts := strings.Split(f, "/")
-		for _, p := range pathParts {
-			if !Contains(path, p) && p != ".." {
-				path = append(path, p)
-			}
-		}
-	}
-
-	return filepath.Join(path...)
+    return foundPath
 }
 
-func (e *Epub) urlPath(files ...string) string {
-	s := e.absolutePath(files...)
-	return strings.Replace(s, STORAGE_DIRECTORY+"/", "", -1)
+func (e *Epub) urlPath(file string) string {
+	s := e.absolutePath(file)
+    replace := STORAGE_DIRECTORY
+    if replace != "" {
+        replace += "/"
+    }
+	return strings.Replace(s, replace, "", -1)
 }
 
 func (e *Epub) verifyMimetype() error {
@@ -121,7 +127,7 @@ func (e *Epub) verifyMimetype() error {
 }
 
 func (e *Epub) parseContainer() error {
-	c, err := ParseXML[Container](e.absolutePath("META-INF", "container.xml"))
+	c, err := ParseXML[Container](e.absolutePath("META-INF/container.xml"))
 	if err != nil {
 		return err
 	}
@@ -372,6 +378,12 @@ func (e *Epub) assembleTableOfContents(points []NavPoint) []Section {
 }
 
 func (e *Epub) parseTableOfContents() error {
+    // TODO: For epub 3.0 archives, the toc.ncx file might not exist.
+    // Instead, we'll need to parse the toc.xhtml/toc.html file.
+    if !strings.Contains(e.tableOfContentsPath, ".") {
+        return nil
+    }
+
 	t, err := ParseXML[NCX](e.tableOfContentsPath)
 	if err != nil {
 		return err

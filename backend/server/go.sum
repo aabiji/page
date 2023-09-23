@@ -1,3 +1,5 @@
+github.com/aabiji/page/backend/epub v0.0.0-20230922023337-0abe6b36a4fc h1:n+CFXchnHH2+AHZDNs+7DFoJaxOXAAdt1mRNcVcgNAk=
+github.com/aabiji/page/backend/epub v0.0.0-20230922023337-0abe6b36a4fc/go.mod h1:83kIT/fRGQufrA0zgm0rOgL5sFv/wfRFPZeK+SmYr8c=
 github.com/gorilla/mux v1.8.0 h1:i40aqfkR1h2SlN9hojwV5ZA91wcXFOvkdNIeFDP5koI=
 github.com/gorilla/mux v1.8.0/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
 github.com/rs/cors v1.10.0 h1:62NOS1h+r8p1mW6FM0FSB0exioXLhd/sh15KpjWBZ+8=

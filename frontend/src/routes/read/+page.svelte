@@ -2,4 +2,4 @@
     import BookViewer from "./bookview.svelte";
 </script>
 
-<BookViewer bookName="Dune" />
+<BookViewer bookName="bullet_train" />

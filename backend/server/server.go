@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-    "github.com/aabiji/page/backend/db"
+    //"github.com/aabiji/page/backend/db"
 	"github.com/aabiji/page/backend/epub"
 
 	"github.com/gorilla/mux"
@@ -56,7 +56,7 @@ func Run(addr string) {
 	}).Handler(router)
 	ServeFiles(router)
 
-    _ = db.NewDatabase()
+    //_ = db.NewDatabase()
 
 	fmt.Printf("Running server on http://%s\n", addr)
 	server := &http.Server{

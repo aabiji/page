@@ -44,12 +44,14 @@ func getBookInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+    /*
 	c, err := r.Cookie("userId")
 	if err != nil {
 		handleError(w, err)
 		return
 	}
 	fmt.Println(c.Name, c.Value)
+    */
 
 	scrollOffsets := []int{}
 	for i := 0; i < len(book.Files); i++ {

@@ -60,10 +60,14 @@ export class EpubViewer {
         return iframe.contentWindow!.document.documentElement.scrollHeight - this.pad;
     }
 
-    private imageAttributes() {
-        return this.files[this.pageIdx].endsWith(".html")
-                 ? {tag: "img", source: "src"}
-                 : {tag: "image", source: "xlink:href"};
+    private getImagesInDocument(doc: Document): HTMLElement[] {
+        let images = Array.from(doc.getElementsByTagName("image"));
+        let imgs = Array.from(doc.getElementsByTagName("img"));
+
+        let all_imgs = [];
+        all_imgs.push(...images);
+        all_imgs.push(...imgs);
+        return all_imgs as HTMLElement[];
     }
 
     private injectDefaultCSS(doc: Document) {
@@ -83,11 +87,12 @@ export class EpubViewer {
     }
 
     private correctLinks(doc: Document) {
-        let attr = this.imageAttributes();
-        let images = doc.getElementsByTagName(attr.tag);
+        let sourceAttr = doc.getElementsByTagName("img").length > 0 ? "src" : "xlink:href";
+
+        let images = this.getImagesInDocument(doc);
         for (let image of images) {
-            let source = image.getAttribute(attr.source)!;
-            image.setAttribute(attr.source, utils.staticFileUrl(source));
+            let source = image.getAttribute(sourceAttr)!;
+            image.setAttribute(sourceAttr, utils.staticFileUrl(source));
         }
 
         // NOTE: for now, all links are disabled
@@ -96,8 +101,7 @@ export class EpubViewer {
     }
 
     private getLastImageWithinRange(iframe: HTMLIFrameElement, end: number): HTMLImageElement {
-        let attr = this.imageAttributes();
-        let images = iframe.contentWindow!.document.getElementsByTagName(attr.tag);
+        let images = this.getImagesInDocument(iframe.contentWindow!.document);
         let imagesWithinRange = Array.from(images).filter((img) => {
             return img.getBoundingClientRect().top < end;
         });
