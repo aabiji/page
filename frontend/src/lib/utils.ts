@@ -1,8 +1,9 @@
+export const serverError = "Server error";
 
 export async function callApi(url: string, method: string, json: object): Promise<any> {
     let payload = {
         method: method,
-        body: method == "POST" ? json : null,
+        body: method == "POST" ? JSON.stringify(json) : null,
         credentials: "include",
     };
     const response = await fetch(url, payload);

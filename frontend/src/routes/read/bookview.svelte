@@ -45,12 +45,11 @@
 
     onMount(() => {
         utils.callApi(`http://localhost:8080/book/get/${bookName}`, "GET", {}).then((json) => {
-            if ("Server error" in json) {
+            if (utils.serverError in json) {
                 errorOut = true;
-                console.log(json);
+                console.log(json[utils.serverError]);
                 return;
             }
-
             
             json.Epub.CoverImagePath = utils.coverImagePath(json.Epub.CoverImagePath);
             book.set(json);

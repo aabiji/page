@@ -4,12 +4,13 @@ import "encoding/xml"
 
 /*
 container.xml structure:
-  <?xml version=""?>
-  <container version="" xmlns="">
-    <rootfiles>
-      <rootfile full-path="" media-type=""/>
-    </rootfiles>
-  </container>
+
+	<?xml version=""?>
+	<container version="" xmlns="">
+	  <rootfiles>
+	    <rootfile full-path="" media-type=""/>
+	  </rootfiles>
+	</container>
 */
 type Rootfile struct {
 	XMLName   xml.Name `xml:"rootfile"`
@@ -29,36 +30,37 @@ type Container struct {
 
 /*
 content.opf structure:
-  <?xml version="" encoding="" standalone=""?>
-  <package version="" xmlns="" unique-identifier="">
-    <metadata xmlns:dc="" xmlns:opf="">
-      <meta name="" content="" />
-      <dc:title></dc:title>
-      <dc:creator></dc:creator>
-      <dc:subject></dc:subject>
-      <dc:description></dc:description>
-      <dc:publisher></dc:publisher>
-      <dc:date></dc:date>
-      <dc:source></dc:source>
-      <dc:relation></dc:relation>
-      <dc:coverage></dc:coverage>
-      <dc:contributor></dc:contributor>
-      <dc:rights></dc:rights> <dc:language></dc:language>
-      <dc:identifier id=""></dc:identifier>
-    </metadata>
-    <manifest>
-      <item id="" href="" media-type="" />
-      ...
-    </manifest>
-    <spine toc="">
-      <itemref idref="" />
-      ...
-    </spine>
-    <guide>
-      <reference type="cover" href="cover.xhtml" title="Cover" />
-      ...
-    </guide>
-  </package>
+
+	<?xml version="" encoding="" standalone=""?>
+	<package version="" xmlns="" unique-identifier="">
+	  <metadata xmlns:dc="" xmlns:opf="">
+	    <meta name="" content="" />
+	    <dc:title></dc:title>
+	    <dc:creator></dc:creator>
+	    <dc:subject></dc:subject>
+	    <dc:description></dc:description>
+	    <dc:publisher></dc:publisher>
+	    <dc:date></dc:date>
+	    <dc:source></dc:source>
+	    <dc:relation></dc:relation>
+	    <dc:coverage></dc:coverage>
+	    <dc:contributor></dc:contributor>
+	    <dc:rights></dc:rights> <dc:language></dc:language>
+	    <dc:identifier id=""></dc:identifier>
+	  </metadata>
+	  <manifest>
+	    <item id="" href="" media-type="" />
+	    ...
+	  </manifest>
+	  <spine toc="">
+	    <itemref idref="" />
+	    ...
+	  </spine>
+	  <guide>
+	    <reference type="cover" href="cover.xhtml" title="Cover" />
+	    ...
+	  </guide>
+	</package>
 */
 type Meta struct {
 	XMLName xml.Name `xml:"meta"`

@@ -2,30 +2,21 @@ package server
 
 import (
 	"fmt"
+	"github.com/aabiji/page/backend/db"
+	"github.com/aabiji/page/backend/epub"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
 	"time"
-
-    //"github.com/aabiji/page/backend/db"
-	"github.com/aabiji/page/backend/epub"
-
-	"github.com/gorilla/mux"
-	"github.com/rs/cors"
 )
 
-// Returns a handler that allows cors when serving files over http
-func fileEnableCORS(fs http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		fs.ServeHTTP(w, r)
-	}
-}
+var database db.DB = db.NewDatabase()
 
 // Serve files from localPath on the netPath http endpoint
-func ServeFiles(router *mux.Router) {
+func serveFiles(router *mux.Router) {
 	localPath := os.Getenv("EPUB_STORAGE_DIRECTORY")
 	if localPath == "" {
 		// Default to directory in current user home if environment variable is not set
@@ -41,22 +32,19 @@ func ServeFiles(router *mux.Router) {
 	epub.STORAGE_DIRECTORY = localPath
 
 	fs := http.FileServer(http.Dir(localPath))
-	router.PathPrefix(netPath).Handler(http.StripPrefix(netPath, fileEnableCORS(fs)))
+	router.PathPrefix(netPath).Handler(http.StripPrefix(netPath, fs)) //FilesAllowCORS(fs)))
 }
 
+// Run http server and handle all api endpoints
 func Run(addr string) {
 	router := mux.NewRouter()
-	router.HandleFunc("/cookie", setExampleCookie).Methods("GET")
-	router.HandleFunc("/book/get/{name}", getBookInfo).Methods("GET")
-	corsRouter := cors.New(cors.Options{
-		AllowCredentials: true,
-		AllowedHeaders:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST"},
-		AllowedOrigins:   []string{"http://localhost:5173"},
-	}).Handler(router)
-	ServeFiles(router)
+	router.HandleFunc("/book/get/{name}", GetBook).Methods("GET")
+	router.HandleFunc("/user/auth", AuthAccount).Methods("POST")
+	router.HandleFunc("/user/create", CreateAccount).Methods("POST")
 
-    //_ = db.NewDatabase()
+	serveFiles(router)
+	cors := NewCORS("http://localhost:5173", []string{"GET", "POST"})
+	corsRouter := cors.AllowRequests(router)
 
 	fmt.Printf("Running server on http://%s\n", addr)
 	server := &http.Server{

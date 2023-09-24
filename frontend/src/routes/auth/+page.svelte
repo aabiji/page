@@ -1,36 +1,69 @@
 <script>
-    // TODO: login with different service providers
+    import * as utils from "$lib/utils";
+    import { goto } from "$app/navigation";
+
     let isLogin = true;
-    const toggleState = () => isLogin = !isLogin;
+    let authError = "";
+    let authState = "Login"
+    let authInfo = {email: "", password: "", confirm: ""};
+    const toggleState = () => {
+        isLogin = !isLogin;
+        authState = isLogin ? "Login" : "Create account";
+    }
+
+    function validateAuthInfo() {
+        if (authInfo.email == "" || authInfo.password == "" ||
+            (authInfo.confirm == "" && !isLogin)) {
+            authError = "Please fill out all form fields.";
+        } else if (!authInfo.email.match(/^\S+@\S+\.\S+$/)) {
+            authError = "Please enter a valide email address.";
+        } else if (!isLogin && authInfo.confirm != authInfo.password) {
+            authError = "Password and repeated password must match";
+        } else {
+            authError = "";
+        }
+    }
+
+    function authenticate() {
+        validateAuthInfo();
+        if (authError != "") return;
+        let url = `http://localhost:8080/user/${isLogin ? "auth" : "create"}`;
+        utils.callApi(url, "POST", authInfo).then((json) => {
+            if (utils.serverError in json) {
+                authError = json[utils.serverError];
+                return;
+            }
+            goto("/read");
+        });
+    }
 </script>
 
-{#if isLogin}
 <div class="container">
     <div>
         <h2 class="logo"> Page </h2>
-        <h2> | Login </h2><br><br>
-        <input type="email" placeholder="Email"><br>
-        <input type="password" placeholder="Password"><br>
-        <button> Login </button><br>
-        <a> Forgot password? </a><br>
-        <a on:click={toggleState}> Don't have an account? </a><br>
+        <h2> | {authState} </h2><br>
+        <p class="error-message"> {authError} </p>
+
+        <input bind:value={authInfo.email} type="email" placeholder="Email"><br>
+        <input bind:value={authInfo.password} type="password" placeholder="Password"><br>
+        {#if !isLogin}
+            <input bind:value={authInfo.confirm} type="password" placeholder="Repeat password"><br>
+        {/if}
+        <button on:click={authenticate}> {authState} </button><br>
+
+        {#if !isLogin}
+            <a on:click={toggleState}> Already have an account? </a><br>
+        {:else}
+            <a> Forgot password? </a><br>
+            <a on:click={toggleState}> Don't have an account? </a><br>
+        {/if}
     </div>
 </div>
-{:else}
-<div class="container">
-    <div>
-        <h2 class="logo"> Page </h2>
-        <h2> | Create account </h2><br><br>
-        <input type="email" placeholder="Email"><br>
-        <input type="password" placeholder="Password"><br>
-        <input type="password" placeholder="Repeat password"><br>
-        <button> Signup </button><br>
-        <a on:click={toggleState}> Already have an account? </a><br>
-    </div>
-</div>
-{/if}
 
 <style>
+    .error-message {
+        color: #ed3f2f;
+    }
     .logo {
         width: 300px;
         font-size: 30px;
@@ -38,7 +71,6 @@
     }
     h2 {
         display: inline;
-        margin-bottom: 15px;
     }
     a {
         float: right;
@@ -55,6 +87,11 @@
     input:hover, input:focus {
         outline: none;
         border: var(--accent-color) 1px solid;
+    }
+    input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
+        font-size: 18px;
+        -webkit-text-fill-color: white;
+        -webkit-box-shadow: 0 0 0px 40rem #1b1c1c inset;
     }
     button {
         width: 325px;

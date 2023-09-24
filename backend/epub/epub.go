@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/net/html"
-    "io/fs"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,8 +17,8 @@ import (
 var STORAGE_DIRECTORY string
 
 type Section struct {
-    Path string `json:"Path"`
-    Name string `json:"Name"`
+	Path string `json:"Path"`
+	Name string `json:"Name"`
 }
 
 type Epub struct {
@@ -83,31 +83,31 @@ func (e *Epub) Debug() {
 
 // Path to a file inside the extracted epub file directory
 func (e *Epub) absolutePath(file string) string {
-    basePath := filepath.Join(STORAGE_DIRECTORY, e.Name)
-    if file == "" {
-        return basePath
-    }
-    pathParts := strings.Split(file, "/")
-    targetFile := pathParts[len(pathParts) - 1]
+	basePath := filepath.Join(STORAGE_DIRECTORY, e.Name)
+	if file == "" {
+		return basePath
+	}
+	pathParts := strings.Split(file, "/")
+	targetFile := pathParts[len(pathParts)-1]
 
-    var foundPath string
-    filepath.WalkDir(basePath, func(path string, info fs.DirEntry, err error) error {
-        if !info.IsDir() && targetFile == info.Name() {
-            foundPath = path
-            return filepath.SkipAll
-        }
-        return nil
-    })
+	var foundPath string
+	filepath.WalkDir(basePath, func(path string, info fs.DirEntry, err error) error {
+		if !info.IsDir() && targetFile == info.Name() {
+			foundPath = path
+			return filepath.SkipAll
+		}
+		return nil
+	})
 
-    return foundPath
+	return foundPath
 }
 
 func (e *Epub) urlPath(file string) string {
 	s := e.absolutePath(file)
-    replace := STORAGE_DIRECTORY
-    if replace != "" {
-        replace += "/"
-    }
+	replace := STORAGE_DIRECTORY
+	if replace != "" {
+		replace += "/"
+	}
 	return strings.Replace(s, replace, "", -1)
 }
 
@@ -378,11 +378,11 @@ func (e *Epub) assembleTableOfContents(points []NavPoint) []Section {
 }
 
 func (e *Epub) parseTableOfContents() error {
-    // TODO: For epub 3.0 archives, the toc.ncx file might not exist.
-    // Instead, we'll need to parse the toc.xhtml/toc.html file.
-    if !strings.Contains(e.tableOfContentsPath, ".") {
-        return nil
-    }
+	// TODO: For epub 3.0 archives, the toc.ncx file might not exist.
+	// Instead, we'll need to parse the toc.xhtml/toc.html file.
+	if !strings.Contains(e.tableOfContentsPath, ".") {
+		return nil
+	}
 
 	t, err := ParseXML[NCX](e.tableOfContentsPath)
 	if err != nil {

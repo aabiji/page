@@ -1,15 +1,15 @@
 package db
 
+// TODO: cleanup code
+
 import (
 	"context"
-    "encoding/json"
-    "errors"
+	"errors"
 	"github.com/jackc/pgx/v5/pgxpool"
-    "github.com/aabiji/page/backend/epub"
 )
 
 // SQL Queries:
-const create_books_table = `
+const createBooksTableSQL = `
 CREATE TABLE IF NOT EXISTS Books (
     BookId serial PRIMARY KEY,
     CoverImagePath text NOT NULL,
@@ -18,106 +18,94 @@ CREATE TABLE IF NOT EXISTS Books (
     Info jsonb NOT NULL
 );`
 
-const create_users_table = `
+const createUsersTableSQL = `
 CREATE TABLE IF NOT EXISTS Users (
     UserId serial PRIMARY KEY,
     Email text NOT NULL,
     Password text NOT NULL
 );`
 
-const create_userbooks_table = `
+const createUserBooksTableSQL = `
 CREATE TABLE IF NOT EXISTS UserBooks (
     UserId integer NOT NULL,
     BookId integer NOT NULL,
     CurrentPage integer NOT NULL,
-    ScrollOffsets integer[] NOT NULL,
+    ScrollOffsets integer[] NOT NULL
 );`
 
-const create_user = `
+const createUserSQL = `
 INSERT INTO Users (Email, Password) VALUES ($1, $2);`
 
-const read_user = `
+const readUserSQL = `
 SELECT * FROM Users WHERE Email=$1 AND Password=$2;`
 
-const create_book = `
-INSERT INTO Books (CoverImagePath, Files, TableOfContents, Info) VALUES ($1, $2, $3, $4);`
-
+type User struct {
+	Id       string
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
 type DB struct {
-    conns *pgxpool.Pool
-    context context.Context
+	conns   *pgxpool.Pool
+	context context.Context
 }
 
+// Initialize database instance by creating a series of tables if they weren't
+// already created.
 func NewDatabase() DB {
-    db := DB{context: context.Background()}
+	db := DB{context: context.Background()}
 
-    databaseUrl := "postgres://aabiji:0000@localhost:5432/Page"
-    config, err := pgxpool.ParseConfig(databaseUrl)
-    if err != nil {
-        panic(err)
-    }
+	databaseUrl := "postgres://aabiji:0000@localhost:5432/Page"
+	config, err := pgxpool.ParseConfig(databaseUrl)
+	if err != nil {
+		panic(err)
+	}
 
-    db.conns, err = pgxpool.NewWithConfig(db.context, config)
-    if err != nil {
-        panic(err)
-    }
+	db.conns, err = pgxpool.NewWithConfig(db.context, config)
+	if err != nil {
+		panic(err)
+	}
 
-    // Create database tables if they don't already exist
-    if _, err := db.conns.Exec(db.context, create_users_table); err != nil {
-        panic(err)
-    }
-    if _, err := db.conns.Exec(db.context, create_books_table); err != nil {
-        panic(err)
-    }
-    if _, err := db.conns.Exec(db.context, create_userbooks_table); err != nil {
-        panic(err)
-    }
+	// Create database tables if they don't already exist
+	if _, err := db.conns.Exec(db.context, createUsersTableSQL); err != nil {
+		panic(err)
+	}
+	if _, err := db.conns.Exec(db.context, createBooksTableSQL); err != nil {
+		panic(err)
+	}
+	if _, err := db.conns.Exec(db.context, createUserBooksTableSQL); err != nil {
+		panic(err)
+	}
 
-    return db
+	return db
 }
 
-func (db *DB) CreateUser(email string, hashedPassword string) error {
-    _, err := db.conns.Exec(db.context, create_user, email, hashedPassword)
-    return err
+func (db *DB) CreateUser(u User) error {
+	_, err := db.conns.Exec(db.context, createUserSQL, u.Email, u.Password)
+	return err
 }
 
-func (db *DB) GetUser(email string, hashedPassword string) (string, string, string, error) {
-    var userid string
-    rows, err := db.conns.Query(db.context, read_user, email, hashedPassword)
-    if err != nil {
-        return "", "", "", err
-    }
+func (db *DB) ReadUser(u User) (User, error) {
+	rows, err := db.conns.Query(db.context, readUserSQL, u.Email, u.Password)
+	if err != nil {
+		return u, err
+	}
 
-    exists := false
-    for rows.Next() {
-        exists = true
-        if err := rows.Scan(&userid, &email, &hashedPassword); err != nil {
-            return "", "", "", err
-        }
-    }
+	exists := false
+	for rows.Next() {
+		exists = true
+		if err := rows.Scan(&u.Id, &u.Email, &u.Password); err != nil {
+			return u, err
+		}
+	}
 
-    if err := rows.Err(); err != nil {
-        return "", "", "", err
-    }
+	if err := rows.Err(); err != nil {
+		return u, err
+	}
 
-    if !exists {
-        return "", "", "", errors.New("User not found.")
-    }
+	if !exists {
+		return u, errors.New("User with those credentials not found.")
+	}
 
-    return userid, email, hashedPassword, nil
-}
-
-func (db *DB) CreateBook(e *epub.Epub) error {
-    toc, err := json.Marshal(e.TableOfContents)
-    if err != nil {
-        return err
-    }
-
-    info, err := json.Marshal(e.Info)
-    if err != nil {
-        return err
-    }
-
-    _, err = db.conns.Exec(db.context, create_book, e.CoverImagePath, e.Files, toc, info)
-    return err
+	return u, nil
 }
