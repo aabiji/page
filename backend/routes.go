@@ -1,15 +1,19 @@
-package server
+package main
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/aabiji/page/backend/db"
 	"github.com/aabiji/page/backend/epub"
 	"github.com/gorilla/mux"
 	"io"
 	"net/http"
+	"os"
+	"os/user"
+	"path/filepath"
 	"time"
 )
+
+var database DB = NewDatabase()
 
 // Return json containing error value to client signalling an internal server error.
 func errorResponse(w http.ResponseWriter, err error) {
@@ -50,10 +54,32 @@ func getRequestJson[T any](w http.ResponseWriter, r *http.Request, data *T) erro
 	return nil
 }
 
+// GET /static/* (ex. /static/path/to/file.html)
+// Serve files from localPath on the netPath http endpoint
+func ServeFiles(router *mux.Router) {
+	localPath := os.Getenv("EPUB_STORAGE_DIRECTORY")
+	if localPath == "" {
+		// Default to directory in current user home if environment variable is not set
+		currentUser, err := user.Current()
+		if err != nil {
+			panic(err)
+		}
+		localPath = filepath.Join(currentUser.HomeDir, "BOOKS")
+		os.MkdirAll(localPath, os.ModePerm)
+	}
+
+	netPath := "/static/"
+	epub.STORAGE_DIRECTORY = localPath
+
+	fs := http.FileServer(http.Dir(localPath))
+	router.PathPrefix(netPath).Handler(http.StripPrefix(netPath, fs)) //FilesAllowCORS(fs)))
+}
+
+// POST /user/auth
 // Validate user login credentials and return cookie containing userId.
 // The userId cookie will be used to add user state to other requests made by client.
 func AuthAccount(w http.ResponseWriter, r *http.Request) {
-	var user db.User
+	var user User
 	if err := getRequestJson(w, r, &user); err != nil {
 		errorResponse(w, err)
 		return
@@ -68,10 +94,11 @@ func AuthAccount(w http.ResponseWriter, r *http.Request) {
 	setCookie(w, r, "userId", user.Id)
 }
 
+// POST /user/create
 // Validate and create new user account and return cookie containing userId.
 // The userId cookie will be used to add user state to other requests made by client.
 func CreateAccount(w http.ResponseWriter, r *http.Request) {
-	var user db.User
+	var user User
 	if err := getRequestJson(w, r, &user); err != nil {
 		errorResponse(w, err)
 		return
@@ -87,6 +114,7 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 	setCookie(w, r, "userId", user.Id)
 }
 
+// GET /book/get/{name}
 // Get book info. NOTE: this function is temporary.
 func GetBook(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)

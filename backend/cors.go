@@ -1,22 +1,10 @@
-package server
+package main
 
 import (
 	"net/http"
 	"slices"
 	"strings"
 )
-
-type CORS struct {
-	methods        string
-	allowedOrigin  string
-	allowedMethods []string
-}
-
-func NewCORS(origin string, methods []string) CORS {
-	c := CORS{allowedMethods: methods, allowedOrigin: origin}
-	c.methods = strings.Join(methods, ", ")
-	return c
-}
 
 // Return a handler that allows cors when accessing files over http
 func FilesAllowCORS(fs http.Handler) http.HandlerFunc {
@@ -33,10 +21,11 @@ func isPreflightRequest(r *http.Request) bool {
 }
 
 // Return a http handler that allows cors when making http requests from a certain origin
-func (c *CORS) AllowRequests(handler http.Handler) http.Handler {
+func AllowRequests(allowedOrigin string, handler http.Handler) http.Handler {
+	allowedMethods := []string{"GET", "POST", "PUT", "DELETE"}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("origin")
-		allowedOrigin := origin == c.allowedOrigin
+		allowedOrigin := origin == allowedOrigin
 
 		if allowedOrigin {
 			w.Header().Add("Origin", "Vary")
@@ -46,8 +35,9 @@ func (c *CORS) AllowRequests(handler http.Handler) http.Handler {
 
 		if isPreflightRequest(r) {
 			method := r.Header.Get("Access-Control-Request-Method")
-			if allowedOrigin && slices.Contains(c.allowedMethods, method) {
-				w.Header().Set("Acess-Control-Allow-Methods", c.methods)
+			methodsStr := strings.Join(allowedMethods, ", ")
+			if allowedOrigin && slices.Contains(allowedMethods, method) {
+				w.Header().Set("Acess-Control-Allow-Methods", methodsStr)
 			}
 		}
 
