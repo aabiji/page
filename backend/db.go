@@ -1,43 +1,11 @@
 package main
 
-// TODO: cleanup code
-
 import (
 	"context"
 	"errors"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"reflect"
 )
-
-// SQL Queries:
-const createBooksTableSQL = `
-CREATE TABLE IF NOT EXISTS Books (
-    BookId serial PRIMARY KEY,
-    CoverImagePath text NOT NULL,
-    Files text[] NOT NULL,
-    TableOfContents jsonb[] NOT NULL,
-    Info jsonb NOT NULL
-);`
-
-const createUsersTableSQL = `
-CREATE TABLE IF NOT EXISTS Users (
-    UserId serial PRIMARY KEY,
-    Email text NOT NULL,
-    Password text NOT NULL
-);`
-
-const createUserBooksTableSQL = `
-CREATE TABLE IF NOT EXISTS UserBooks (
-    UserId integer NOT NULL,
-    BookId integer NOT NULL,
-    CurrentPage integer NOT NULL,
-    ScrollOffsets integer[] NOT NULL
-);`
-
-const createUserSQL = `
-INSERT INTO Users (Email, Password) VALUES ($1, $2);`
-
-const readUserSQL = `
-SELECT * FROM Users WHERE Email=$1 AND Password=$2;`
 
 type User struct {
 	Id       string
@@ -67,45 +35,80 @@ func NewDatabase() DB {
 	}
 
 	// Create database tables if they don't already exist
-	if _, err := db.conns.Exec(db.context, createUsersTableSQL); err != nil {
+	createUsers := `
+    CREATE TABLE IF NOT EXISTS Users (
+        UserId serial PRIMARY KEY,
+        Email text NOT NULL,
+        Password text NOT NULL
+    );`
+	if _, err := db.conns.Exec(db.context, createUsers); err != nil {
 		panic(err)
 	}
-	if _, err := db.conns.Exec(db.context, createBooksTableSQL); err != nil {
+
+	createBooks := `
+    CREATE TABLE IF NOT EXISTS Books (
+        BookId serial PRIMARY KEY,
+        CoverImagePath text NOT NULL,
+        Files text[] NOT NULL,
+        TableOfContents jsonb[] NOT NULL,
+        Info jsonb NOT NULL
+    );`
+	if _, err := db.conns.Exec(db.context, createBooks); err != nil {
 		panic(err)
 	}
-	if _, err := db.conns.Exec(db.context, createUserBooksTableSQL); err != nil {
+
+	createUserBooks := `
+    CREATE TABLE IF NOT EXISTS UserBooks (
+        UserId integer NOT NULL,
+        BookId integer NOT NULL,
+        CurrentPage integer NOT NULL,
+        ScrollOffsets integer[] NOT NULL
+    );`
+	if _, err := db.conns.Exec(db.context, createUserBooks); err != nil {
 		panic(err)
 	}
 
 	return db
 }
 
-func (db *DB) CreateUser(u User) error {
-	_, err := db.conns.Exec(db.context, createUserSQL, u.Email, u.Password)
+// Execute sql query on database.
+func (db *DB) Exec(sql string, params ...any) error {
+	_, err := db.conns.Exec(db.context, sql, params...)
 	return err
 }
 
-func (db *DB) ReadUser(u User) (User, error) {
-	rows, err := db.conns.Query(db.context, readUserSQL, u.Email, u.Password)
-	if err != nil {
-		return u, err
-	}
+// Read value from sql database.
+// sqlParams is a slice of all the input parameters for the query.
+// readParams is a slice of pointers for receiving values of the query.
+// Returns a slice containing all the query results.
+func (db *DB) Read(sql string, sqlParams []any, readParams []any) ([]any, error) {
+	var results []any
 
-	exists := false
+	rows, err := db.conns.Query(db.context, sql, sqlParams...)
+	if err != nil {
+		return results, err
+	}
+	defer rows.Close()
+
 	for rows.Next() {
-		exists = true
-		if err := rows.Scan(&u.Id, &u.Email, &u.Password); err != nil {
-			return u, err
+		var values []any
+		if err := rows.Scan(readParams...); err != nil {
+			return results, err
 		}
+		for i := 0; i < len(readParams); i++ {
+			val := reflect.ValueOf(readParams[i])
+			values = append(values, reflect.Indirect(val))
+		}
+		results = append(results, values)
 	}
 
 	if err := rows.Err(); err != nil {
-		return u, err
+		return results, err
 	}
 
-	if !exists {
-		return u, errors.New("User with those credentials not found.")
+	if len(results) == 0 {
+		return results, errors.New("Entries not found.")
 	}
 
-	return u, nil
+	return results, nil
 }

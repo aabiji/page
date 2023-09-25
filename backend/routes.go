@@ -85,7 +85,9 @@ func AuthAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := database.ReadUser(user)
+	sql := "SELECT * FROM Users WHERE Email=$1 AND Password=$2;"
+	_, err := database.Read(sql, []any{user.Email, user.Password}, []any{&user.Id, &user.Email, &user.Password})
+	fmt.Println(err)
 	if err != nil {
 		errorResponse(w, err)
 		return
@@ -104,8 +106,9 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: check for duplicate accounts
-	err := database.CreateUser(user)
+	// TODO: hash password and validate unique email
+	sql := "INSERT INTO Users (Email, Password) VALUES ($1, $2);"
+	err := database.Exec(sql, user.Email, user.Password)
 	if err != nil {
 		errorResponse(w, err)
 		return
