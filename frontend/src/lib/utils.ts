@@ -1,3 +1,5 @@
+import { goto } from "$app/navigation";
+
 export const serverError = "Server error";
 
 export async function callApi(url: string, method: string, json: object): Promise<any> {
@@ -18,6 +20,13 @@ export async function downloadFile(url: string): Promise<string> {
     return response.text();
 }
 
+export async function hashSHA256(data: string): Promise<string> {
+    let encoded = new TextEncoder().encode(data);
+    let buffer = await window.crypto.subtle.digest("SHA-256", encoded);
+    let hash = Array.from(new Uint8Array(buffer));
+    return hash.map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
 export function staticFileUrl(file: string): string {
     file = file.replace(window.location.origin+"/", "");
     return `http://localhost:8080/static/${file}`;
@@ -27,9 +36,9 @@ export function coverImagePath(file: string): string {
     return file == "" ? "default-cover-image.png" : staticFileUrl(file);
 }
 
-export async function hashSHA256(data: string): Promise<string> {
-    let encoded = new TextEncoder().encode(data);
-    let buffer = await window.crypto.subtle.digest("SHA-256", encoded);
-    let hash = Array.from(new Uint8Array(buffer));
-    return hash.map(byte => byte.toString(16).padStart(2, "0")).join("");
+// Redirect to auth page if user has not authenticated
+export function redirectIfNotAuth() {
+    if (document.cookie == "") {
+        goto("/auth");
+    }
 }

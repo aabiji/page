@@ -133,7 +133,7 @@
         width: 20%;
         height: 97vh;
         overflow-y: scroll;
-        background-color: #1c1c1c;
+        background-color: var(--background-accent);
         overflow-wrap: break-word;
     }
 

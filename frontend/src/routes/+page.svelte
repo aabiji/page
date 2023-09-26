@@ -1,10 +1,14 @@
 <script>
     import { onMount } from "svelte";
-    import { goto } from "$app/navigation";
+    import * as utils from "$lib/utils";
+    import Navbar from "./navbar.svelte";
+    import Book from "./book.svelte";
 
     onMount(() => {
-        if (document.cookie == "") goto("/auth");
+        utils.redirectIfNotAuth();
     });
 </script>
 
-<h1> Hello to Page! </h1>
+<Navbar />
+<h1> Home page </h1>
+<Book name="Book namejfoieajfeoiwj" userBookId="1iue092ija"/>

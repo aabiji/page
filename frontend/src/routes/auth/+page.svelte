@@ -1,6 +1,7 @@
 <script>
-    import * as utils from "$lib/utils";
+    import { onMount } from "svelte";
     import { goto } from "$app/navigation";
+    import * as utils from "$lib/utils";
 
     let isLogin = true;
     let authError = "";
@@ -41,6 +42,10 @@
             goto("/read");
         });
     }
+
+    onMount(() => {
+        utils.redirectIfNotAuth();
+    });
 </script>
 
 <div class="container">
@@ -121,7 +126,7 @@
         align-items: center;
         margin-bottom: 10px;
         justify-content: center;
-        background-color: #1b1c1c;
+        background-color: var(--background-accent);
         transform: translate(-50%, -50%);
         box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
     }

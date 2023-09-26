@@ -1,11 +1,13 @@
 <script lang="ts">
     import BookViewer from "./bookview.svelte";
-
+    import Navbar from "../navbar.svelte";
     import { onMount } from "svelte";
-    import { goto } from "$app/navigation";
+    import * as utils from "$lib/utils";
+
     onMount(() => {
-        if (document.cookie == "") goto("/auth");
+        utils.redirectIfNotAuth();
     });
 </script>
 
+<Navbar />
 <BookViewer bookName="Dune" />
