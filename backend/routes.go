@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/aabiji/page/backend/epub"
 	"github.com/gorilla/mux"
@@ -10,7 +11,6 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"time"
 )
 
 var database DB = NewDatabase()
@@ -29,9 +29,8 @@ func setCookie(w http.ResponseWriter, r *http.Request, name, value string) {
 	cookie := http.Cookie{
 		Name:     name,
 		Value:    value,
-		Secure:   r.Host != "localhost:8080",
-		SameSite: http.SameSiteNoneMode,
-		Expires:  time.Now().Add(364 * 24 * time.Second),
+		Path:     "/",
+		HttpOnly: false,
 	}
 	http.SetCookie(w, &cookie)
 
@@ -81,15 +80,18 @@ func ServeFiles(router *mux.Router) {
 func AuthAccount(w http.ResponseWriter, r *http.Request) {
 	var user User
 	if err := getRequestJson(w, r, &user); err != nil {
-		errorResponse(w, err)
+		errorResponse(w, errors.New(SERVER_ERORR))
 		return
 	}
 
-	sql := "SELECT * FROM Users WHERE Email=$1 AND Password=$2;"
-	_, err := database.Read(sql, []any{user.Email, user.Password}, []any{&user.Id, &user.Email, &user.Password})
-	fmt.Println(err)
-	if err != nil {
-		errorResponse(w, err)
+	sql := "SELECT UserId FROM Users WHERE Email=$1 AND Password=$2;"
+	_, err := database.Read(sql, []any{user.Email, user.Password}, []any{&user.Id})
+	if err != nil && err.Error() == NOT_FOUND {
+		msg := "Account not found. Forgot your password?"
+		errorResponse(w, errors.New(msg))
+		return
+	} else if err != nil {
+		errorResponse(w, errors.New(SERVER_ERORR))
 		return
 	}
 
@@ -102,15 +104,22 @@ func AuthAccount(w http.ResponseWriter, r *http.Request) {
 func CreateAccount(w http.ResponseWriter, r *http.Request) {
 	var user User
 	if err := getRequestJson(w, r, &user); err != nil {
-		errorResponse(w, err)
+		errorResponse(w, errors.New(SERVER_ERORR))
 		return
 	}
 
-	// TODO: hash password and validate unique email
-	sql := "INSERT INTO Users (Email, Password) VALUES ($1, $2);"
-	err := database.Exec(sql, user.Email, user.Password)
+	sql := "SELECT UserId FROM Users WHERE Email=$1"
+	_, err := database.Read(sql, []any{user.Email}, []any{&user.Id})
+	if err == nil {
+		msg := "Account already exists. Create a new one with a different email."
+		errorResponse(w, errors.New(msg))
+		return
+	}
+
+	sql = "INSERT INTO Users (Email, Password) VALUES ($1, $2);"
+	err = database.Exec(sql, user.Email, user.Password)
 	if err != nil {
-		errorResponse(w, err)
+		errorResponse(w, errors.New(SERVER_ERORR))
 		return
 	}
 
@@ -130,6 +139,7 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println(r.Cookies())
 	c, err := r.Cookie("userId")
 	if err != nil {
 		errorResponse(w, err)

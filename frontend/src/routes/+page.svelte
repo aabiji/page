@@ -3,9 +3,7 @@
     import { goto } from "$app/navigation";
 
     onMount(() => {
-        if (document.cookie == "") {
-            goto("/auth");
-        }
+        if (document.cookie == "") goto("/auth");
     });
 </script>
 

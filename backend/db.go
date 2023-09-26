@@ -8,8 +8,10 @@ import (
 )
 
 type User struct {
-	Id       string
-	Email    string `json:"email"`
+	Id    string
+	Email string `json:"email"`
+	// Password should be hashed using the SHA256
+	// algorithm in the frontend side
 	Password string `json:"password"`
 }
 
@@ -17,6 +19,9 @@ type DB struct {
 	conns   *pgxpool.Pool
 	context context.Context
 }
+
+const NOT_FOUND = "Entries not found"
+const SERVER_ERORR = "Internal server error. Please try again."
 
 // Initialize database instance by creating a series of tables if they weren't
 // already created.
@@ -107,7 +112,7 @@ func (db *DB) Read(sql string, sqlParams []any, readParams []any) ([]any, error)
 	}
 
 	if len(results) == 0 {
-		return results, errors.New("Entries not found.")
+		return results, errors.New(NOT_FOUND)
 	}
 
 	return results, nil

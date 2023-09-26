@@ -3,10 +3,10 @@ export const serverError = "Server error";
 export async function callApi(url: string, method: string, json: object): Promise<any> {
     let payload = {
         method: method,
-        body: method == "POST" ? JSON.stringify(json) : null,
         credentials: "include",
+        body: method == "POST" ? JSON.stringify(json) : null,
     };
-    const response = await fetch(url, payload);
+    const response = await fetch(url, payload as RequestInit);
     return response.json();
 }
 
@@ -25,4 +25,11 @@ export function staticFileUrl(file: string): string {
 
 export function coverImagePath(file: string): string {
     return file == "" ? "default-cover-image.png" : staticFileUrl(file);
+}
+
+export async function hashSHA256(data: string): Promise<string> {
+    let encoded = new TextEncoder().encode(data);
+    let buffer = await window.crypto.subtle.digest("SHA-256", encoded);
+    let hash = Array.from(new Uint8Array(buffer));
+    return hash.map(byte => byte.toString(16).padStart(2, "0")).join("");
 }

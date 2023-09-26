@@ -7,7 +7,9 @@
     let authState = "Login"
     let authInfo = {email: "", password: "", confirm: ""};
     const toggleState = () => {
+        authError = "";
         isLogin = !isLogin;
+        authInfo = {email: "", password: "", confirm: ""};
         authState = isLogin ? "Login" : "Create account";
     }
 
@@ -24,11 +26,14 @@
         }
     }
 
-    function authenticate() {
+    async function authenticate() {
         validateAuthInfo();
         if (authError != "") return;
         let url = `http://localhost:8080/user/${isLogin ? "auth" : "create"}`;
+        let unhashedPassword = authInfo.password;
+        authInfo.password = await utils.hashSHA256(authInfo.password);
         utils.callApi(url, "POST", authInfo).then((json) => {
+            authInfo.password = unhashedPassword;
             if (utils.serverError in json) {
                 authError = json[utils.serverError];
                 return;
