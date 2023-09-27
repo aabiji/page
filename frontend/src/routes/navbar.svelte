@@ -1,51 +1,46 @@
 <script lang="ts">
-    let userProfilePic = "default-cover-image.png";
+    let userProfilePic = "default-profile.png";
 </script>
 
-<div class="container">
-    <div class="bar">
-        <h1 title="Home" class="logo"><a href="/">Page</a></h1> 
-        <input title="Search" type="text" placeholder="Search books">
-        <a title="Account" href="/account"><img src={userProfilePic} /></a>
-    </div>
-    <hr>
+<div class="bar">
+    <h1 title="Home" class="logo"><a href="/">Page</a></h1> 
+    <input title="Search" type="text" placeholder="Search books">
+    <a title="Account" href="/account"><img src={userProfilePic} /></a>
 </div>
 
 <style>
-    .container {
-        width: 100%;
+    .bar {
+        top: 0;
+        height: 45px;
+        width: 100.5%;
+        position: fixed;
+        padding: 5px 5px;
+        text-align: center;
+        margin-left: -10px;
         background-color: var(--background-accent);
     }
     .bar * {
         display: inline;
     }
-    .bar {
-        width: 100%;
-        height: 50px;
-        text-align: center;
-        margin-top: -5px;
-    }
     h1 {
         float: left;
-        margin-top: 1px;
+        margin-top: -2px;
         margin-left: 10px;
         margin-bottom: 0px;
     }
     img {
         width: 35px;
         height: 35px;
-        border-radius: 50%;
         float: right;
-        margin-top: 5px;
+        border-radius: 50%;
         margin-right: 20px;
+        margin-top: 8px;
     }
     input {
         width: 50%;
         color: white;
-        margin-top: 3px;
         font-size: 18px;
-        padding: 10px 10px;
-        margin-bottom: 15px;
+        padding: 8px 8px;
         border: #535454 1px solid;
         background-color: rgba(0,0,0,0);
     }

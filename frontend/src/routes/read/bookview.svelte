@@ -113,6 +113,9 @@
     }
 
     .container {
+        width: 100%;
+        position: fixed;
+        margin-top: 45px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -126,15 +129,16 @@
 
     .right-sidepanel {
         width: 80%;
-        height: 97vh;
+        height: calc(97.5vh - 45px);
     }
 
     .left-sidepanel {
         width: 20%;
-        height: 97vh;
+        margin-left: -5px;
         overflow-y: scroll;
-        background-color: var(--background-accent);
+        height: calc(98vh - 45px);
         overflow-wrap: break-word;
+        background-color: var(--background-accent);
     }
 
     .left-sidepanel p {

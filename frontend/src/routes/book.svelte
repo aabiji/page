@@ -1,8 +1,8 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
     export let name: string;
-    export let userBookId: string;
-    const readBook = () => goto(`${window.origin}/read/${userBookId}`);
+    export let id: string;
+    const readBook = () => goto(`${window.origin}/read/${id}`);
 </script>
 
 <div on:click={readBook}>
@@ -12,18 +12,17 @@
 
 <style>
     img {
-        width: 100px;
-        height: 175px;
+        width: 115px;
+        height: 190px;
     }
     div {
-        width: 100px;
+        width: 115px;
         cursor: pointer;
         text-align: center;
         height: fit-content;
-        background-color: red;
     }
     p {
         font-size: 17px;
-        margin-top: -1px;
+        word-break: break-all;
     }
 </style>
