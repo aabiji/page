@@ -5,14 +5,15 @@
     import Book from "./book.svelte";
 
     let fileInput: HTMLElement;
-    function uploadFile(event) {
+    function uploadFile(event: any) {
         const file = event.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const contents = event.target?.result;
-            console.log(contents);
-        };
-        reader.readAsArrayBuffer(file);
+        const formData = new FormData();
+        formData.append("file", file);
+        let url = "http://localhost:8080/book/upload";
+        let payload = {method: "POST", body: formData};
+        fetch(url, payload).then((response) => {
+            console.log(response);
+        });
     }
 
     onMount(() => {

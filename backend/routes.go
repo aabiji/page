@@ -14,13 +14,24 @@ import (
 )
 
 var database DB = NewDatabase()
+const ( // Server error responses
+    NOT_FOUND = "Entries not found"
+    BAD_CLIENT_REQUEST = "Bad client request"
+    SERVER_ERORR = "Internal server error. Please try again"
+)
+const MAX_UPLOAD_SIZE = 100 << 20 // 100 megabyte limit on uploaded epub files
 
 // Return json containing error value to client signalling an internal server error.
-func errorResponse(w http.ResponseWriter, err error) {
-	w.WriteHeader(http.StatusInternalServerError)
-	response := map[string]string{
-		"Server error": err.Error(),
-	}
+func respondWithError(w http.ResponseWriter, err error) {
+    errorCode := http.StatusOK
+    if err.Error() == SERVER_ERORR {
+        errorCode = http.StatusInternalServerError
+    } else if err.Error() == BAD_CLIENT_REQUEST {
+        errorCode = http.StatusBadRequest
+    }
+
+	w.WriteHeader(errorCode)
+	response := map[string]string{"Server error": err.Error()}
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -80,7 +91,7 @@ func ServeFiles(router *mux.Router) {
 func AuthAccount(w http.ResponseWriter, r *http.Request) {
 	var user User
 	if err := getRequestJson(w, r, &user); err != nil {
-		errorResponse(w, errors.New(SERVER_ERORR))
+		respondWithError(w, errors.New(BAD_CLIENT_REQUEST))
 		return
 	}
 
@@ -88,10 +99,10 @@ func AuthAccount(w http.ResponseWriter, r *http.Request) {
 	_, err := database.Read(sql, []any{user.Email, user.Password}, []any{&user.Id})
 	if err != nil && err.Error() == NOT_FOUND {
 		msg := "Account not found. Forgot your password?"
-		errorResponse(w, errors.New(msg))
+		respondWithError(w, errors.New(msg))
 		return
 	} else if err != nil {
-		errorResponse(w, errors.New(SERVER_ERORR))
+		respondWithError(w, errors.New(SERVER_ERORR))
 		return
 	}
 
@@ -104,7 +115,7 @@ func AuthAccount(w http.ResponseWriter, r *http.Request) {
 func CreateAccount(w http.ResponseWriter, r *http.Request) {
 	var user User
 	if err := getRequestJson(w, r, &user); err != nil {
-		errorResponse(w, errors.New(SERVER_ERORR))
+		respondWithError(w, errors.New(BAD_CLIENT_REQUEST))
 		return
 	}
 
@@ -112,18 +123,60 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 	_, err := database.Read(sql, []any{user.Email}, []any{&user.Id})
 	if err == nil {
 		msg := "Account already exists. Create a new one with a different email."
-		errorResponse(w, errors.New(msg))
+		respondWithError(w, errors.New(msg))
 		return
 	}
 
 	sql = "INSERT INTO Users (Email, Password) VALUES ($1, $2);"
 	err = database.Exec(sql, user.Email, user.Password)
 	if err != nil {
-		errorResponse(w, errors.New(SERVER_ERORR))
+		respondWithError(w, errors.New(SERVER_ERORR))
 		return
 	}
 
 	setCookie(w, r, "userId", user.Id)
+}
+
+// Receive file from frontend request and save it locally.
+func receiveFile(w http.ResponseWriter, r *http.Request) (string, error) {
+    if err := r.ParseMultipartForm(MAX_UPLOAD_SIZE); err != nil {
+        return "", errors.New(BAD_CLIENT_REQUEST)
+    }
+
+    uploadedFile, handler, err := r.FormFile("file")
+    if err != nil {
+        return "", errors.New(BAD_CLIENT_REQUEST)
+    }
+    defer uploadedFile.Close()
+
+    // TODO: store files in a preconfigured directory
+    filename := filepath.Join(epub.STORAGE_DIRECTORY, "_EPUB", handler.Filename)
+    localFile, err := os.Create(filename)
+    if err != nil {
+        return "", errors.New(SERVER_ERORR)
+    }
+    defer localFile.Close()
+
+    if _, err := io.Copy(localFile, uploadedFile); err != nil {
+        return "", errors.New(SERVER_ERORR)
+    }
+
+    return filename, nil
+}
+
+// POST /book/upload
+// Upload epub file to esrver.
+func EpubUpload(w http.ResponseWriter, r *http.Request) {
+    filename, err := receiveFile(w, r)
+    if err != nil {
+        respondWithError(w, err)
+        return
+    }
+
+    fmt.Println(filename)
+
+    response := map[string]string{"Status": "Epub uploaded successfully"}
+    json.NewEncoder(w).Encode(response)
 }
 
 // GET /book/get/{name}
@@ -135,14 +188,14 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 
 	book, err := epub.New(path)
 	if err != nil {
-		errorResponse(w, err)
+		respondWithError(w, err)
 		return
 	}
 
 	fmt.Println(r.Cookies())
 	c, err := r.Cookie("userId")
 	if err != nil {
-		errorResponse(w, err)
+		respondWithError(w, err)
 		return
 	}
 	fmt.Println(c.Name, c.Value)

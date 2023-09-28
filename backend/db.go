@@ -20,9 +20,6 @@ type DB struct {
 	context context.Context
 }
 
-const NOT_FOUND = "Entries not found"
-const SERVER_ERORR = "Internal server error. Please try again."
-
 // Initialize database instance by creating a series of tables if they weren't
 // already created.
 func NewDatabase() DB {

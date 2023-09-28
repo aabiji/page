@@ -10,9 +10,11 @@ import (
 
 func main() {
 	router := mux.NewRouter()
-	router.HandleFunc("/book/get/{name}", GetBook).Methods("GET")
 	router.HandleFunc("/user/auth", AuthAccount).Methods("POST")
 	router.HandleFunc("/user/create", CreateAccount).Methods("POST")
+
+	router.HandleFunc("/book/get/{name}", GetBook).Methods("GET")
+    router.HandleFunc("/book/upload", EpubUpload).Methods("POST")
 	ServeFiles(router)
 
 	addr := "localhost:8080"

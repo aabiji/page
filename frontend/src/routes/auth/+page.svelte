@@ -33,10 +33,10 @@
         let url = `http://localhost:8080/user/${isLogin ? "auth" : "create"}`;
         let unhashedPassword = authInfo.password;
         authInfo.password = await utils.hashSHA256(authInfo.password);
-        utils.callApi(url, "POST", authInfo).then((json) => {
+        utils.callApi(url, "POST", authInfo).then((response) => {
             authInfo.password = unhashedPassword;
-            if (utils.serverError in json) {
-                authError = json[utils.serverError];
+            if (utils.serverError in response) {
+                authError = response[utils.serverError];
                 return;
             }
             goto("/read");
