@@ -4,20 +4,22 @@
     import Navbar from "./navbar.svelte";
     import Book from "./book.svelte";
 
+    let bookIds = [];
     let fileInput: HTMLElement;
     function uploadFile(event: any) {
         const file = event.target.files[0];
         const formData = new FormData();
         formData.append("file", file);
-        let url = "http://localhost:8080/book/upload";
-        let payload = {method: "POST", body: formData};
-        fetch(url, payload).then((response) => {
-            console.log(response);
+        let url = "http://localhost:8080/user/book/upload";
+        utils.callApi(url, "POST", formData, true).then((response) => {
+            utils.cacheBookId(response.BookId);
+            bookIds = utils.getBookIdCache();
         });
     }
 
     onMount(() => {
         utils.redirectIfNotAuth();
+        bookIds = utils.getBookIdCache();
     });
 </script>
 
@@ -29,11 +31,9 @@
         <button on:click={() => fileInput.click()}> Upload book </button>
     </div>
     <div class="collection">
-        <Book name="Book #1" id="foijeaijfe"/>
-        <Book name="Book #2" id="foijeaijfe"/>
-        <Book name="Book #3" id="foijeaijfe"/>
-        <Book name="Book #4" id="foijeaijfe"/>
-        <Book name="Book #5" id="foijeaijfe"/>
+        {#each bookIds as bookId}
+            <Book name={bookId} id={bookId} />
+        {/each}
     </div>
 </div>
 

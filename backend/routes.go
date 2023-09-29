@@ -3,86 +3,26 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	"net/http"
 	"github.com/aabiji/page/backend/epub"
 	"github.com/gorilla/mux"
-	"io"
-	"net/http"
-	"os"
-	"os/user"
-	"path/filepath"
 )
 
 var database DB = NewDatabase()
-const ( // Server error responses
-    NOT_FOUND = "Entries not found"
-    BAD_CLIENT_REQUEST = "Bad client request"
-    SERVER_ERORR = "Internal server error. Please try again"
-)
+var FILE_UPLOAD_DIRECTORY string  // Directory where uploaded files will be stored
 const MAX_UPLOAD_SIZE = 100 << 20 // 100 megabyte limit on uploaded epub files
-
-// Return json containing error value to client signalling an internal server error.
-func respondWithError(w http.ResponseWriter, err error) {
-    errorCode := http.StatusOK
-    if err.Error() == SERVER_ERORR {
-        errorCode = http.StatusInternalServerError
-    } else if err.Error() == BAD_CLIENT_REQUEST {
-        errorCode = http.StatusBadRequest
-    }
-
-	w.WriteHeader(errorCode)
-	response := map[string]string{"Server error": err.Error()}
-	json.NewEncoder(w).Encode(response)
-}
-
-// Set cookie header in http response to client.
-func setCookie(w http.ResponseWriter, r *http.Request, name, value string) {
-	cookie := http.Cookie{
-		Name:     name,
-		Value:    value,
-		Path:     "/",
-		HttpOnly: false,
-	}
-	http.SetCookie(w, &cookie)
-
-	// Empty json response
-	response := map[string]string{}
-	json.NewEncoder(w).Encode(response)
-}
-
-// Get POST request json payload from request body.
-func getRequestJson[T any](w http.ResponseWriter, r *http.Request, data *T) error {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(body, data)
-	if err != nil {
-		return err
-	}
-	return nil
-}
+const (                           // Server error responses
+	NOT_FOUND          = "Entries not found"
+	BAD_CLIENT_REQUEST = "Bad client request"
+	SERVER_ERORR       = "Internal server error. Please try again"
+)
 
 // GET /static/* (ex. /static/path/to/file.html)
 // Serve files from localPath on the netPath http endpoint
 func ServeFiles(router *mux.Router) {
-	localPath := os.Getenv("EPUB_STORAGE_DIRECTORY")
-	if localPath == "" {
-		// Default to directory in current user home if environment variable is not set
-		currentUser, err := user.Current()
-		if err != nil {
-			panic(err)
-		}
-		localPath = filepath.Join(currentUser.HomeDir, "BOOKS")
-		os.MkdirAll(localPath, os.ModePerm)
-	}
-
-	netPath := "/static/"
-	epub.STORAGE_DIRECTORY = localPath
-
-	fs := http.FileServer(http.Dir(localPath))
-	router.PathPrefix(netPath).Handler(http.StripPrefix(netPath, fs)) //FilesAllowCORS(fs)))
+	route := "/static/"
+	fs := http.FileServer(http.Dir(epub.EXTRACT_DIRECTORY))
+	router.PathPrefix(route).Handler(http.StripPrefix(route, fs))
 }
 
 // POST /user/auth
@@ -119,7 +59,7 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sql := "SELECT UserId FROM Users WHERE Email=$1"
+	sql := "SELECT UserId FROM Users WHERE Email=$1;"
 	_, err := database.Read(sql, []any{user.Email}, []any{&user.Id})
 	if err == nil {
 		msg := "Account already exists. Create a new one with a different email."
@@ -127,8 +67,8 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sql = "INSERT INTO Users (Email, Password) VALUES ($1, $2);"
-	err = database.Exec(sql, user.Email, user.Password)
+	sql = "INSERT INTO Users (Email, Password) VALUES ($1,$2) RETURNING UserId;"
+	err = database.ExecScan(sql, []any{user.Email, user.Password}, &user.Id)
 	if err != nil {
 		respondWithError(w, errors.New(SERVER_ERORR))
 		return
@@ -137,77 +77,91 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 	setCookie(w, r, "userId", user.Id)
 }
 
-// Receive file from frontend request and save it locally.
-func receiveFile(w http.ResponseWriter, r *http.Request) (string, error) {
-    if err := r.ParseMultipartForm(MAX_UPLOAD_SIZE); err != nil {
-        return "", errors.New(BAD_CLIENT_REQUEST)
-    }
+// POST /user/book/upload
+// Upload user selected epub file to server. Add the generated book to the
+// user's collection. Return the generated bookId of the epub file.
+func UserUploadEpub(w http.ResponseWriter, r *http.Request) {
+	pageCount, bookId, err := receiveEpub(w, r)
+	if err != nil {
+		respondWithError(w, err)
+		return
+	}
 
-    uploadedFile, handler, err := r.FormFile("file")
-    if err != nil {
-        return "", errors.New(BAD_CLIENT_REQUEST)
-    }
-    defer uploadedFile.Close()
+	c, err := r.Cookie("userId")
+	if err != nil {
+		respondWithError(w, errors.New(BAD_CLIENT_REQUEST))
+		return
+	}
 
-    // TODO: store files in a preconfigured directory
-    filename := filepath.Join(epub.STORAGE_DIRECTORY, "_EPUB", handler.Filename)
-    localFile, err := os.Create(filename)
-    if err != nil {
-        return "", errors.New(SERVER_ERORR)
-    }
-    defer localFile.Close()
+    scrollOffsets := make([]int, pageCount) // TODO: don't allocate please
+	sql := "INSERT INTO UserBooks (UserId, BookId, CurrentPage, ScrollOffsets) VALUES ($1,$2,$3,$4);"
+	if err := database.Exec(sql, c.Value, bookId, 0, scrollOffsets); err != nil {
+		respondWithError(w, errors.New(SERVER_ERORR))
+		return
+	}
 
-    if _, err := io.Copy(localFile, uploadedFile); err != nil {
-        return "", errors.New(SERVER_ERORR)
-    }
-
-    return filename, nil
+    response := map[string]any{"BookId": bookId}
+	json.NewEncoder(w).Encode(response)
 }
 
-// POST /book/upload
-// Upload epub file to esrver.
-func EpubUpload(w http.ResponseWriter, r *http.Request) {
-    filename, err := receiveFile(w, r)
+// GET /user/book/get/{id}
+// Return the user state associated to a specific book.
+func GetUserBookState(w http.ResponseWriter, r *http.Request) {
+    c, err := r.Cookie("userId")
     if err != nil {
-        respondWithError(w, err)
+        respondWithError(w, errors.New(BAD_CLIENT_REQUEST))
+        return
+    }
+    bookId := mux.Vars(r)["id"]
+
+    currentPage := 0
+    scrollOffsets := []int{}
+    sql := "SELECT CurrentPage, ScrollOffsets FROM UserBooks WHERE UserId=$1 AND BookId=$2;"
+    _, err = database.Read(sql, []any{c.Value, bookId}, []any{&currentPage, &scrollOffsets})
+    if err != nil {
+        respondWithError(w, errors.New(SERVER_ERORR))
         return
     }
 
-    fmt.Println(filename)
-
-    response := map[string]string{"Status": "Epub uploaded successfully"}
+    response := map[string]any{
+        "CurrentPage": currentPage,
+        "ScrollOffsets": scrollOffsets,
+    }
     json.NewEncoder(w).Encode(response)
 }
 
-// GET /book/get/{name}
-// Get book info. NOTE: this function is temporary.
+// GET /book/get/{id}
+// Get book info by id.
 func GetBook(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	path := fmt.Sprintf("epub/tests/%s.epub", vars["name"])
-	w.Header().Set("Content-Type", "application/json")
+	bookId := mux.Vars(r)["id"]
 
-	book, err := epub.New(path)
-	if err != nil {
-		respondWithError(w, err)
-		return
-	}
+    var imgPath string
+    var files []string
+    var toc, info []byte
+    sql := "SELECT CoverImagePath, Files, TableOfContents, Info FROM Books WHERE BookId=$1;"
+    _, err := database.Read(sql, []any{bookId}, []any{&imgPath, &files, &toc, &info})
+    if err != nil {
+        respondWithError(w, errors.New(SERVER_ERORR))
+        return
+    }
 
-	fmt.Println(r.Cookies())
-	c, err := r.Cookie("userId")
-	if err != nil {
-		respondWithError(w, err)
-		return
-	}
-	fmt.Println(c.Name, c.Value)
+    var tocObj []epub.Section
+    if err := json.Unmarshal(toc, &tocObj); err != nil {
+        respondWithError(w, errors.New(SERVER_ERORR))
+        return
+    }
 
-	scrollOffsets := []int{}
-	for i := 0; i < len(book.Files); i++ {
-		scrollOffsets = append(scrollOffsets, 0)
-	}
-	userBookInfo := map[string]any{
-		"Epub":              book,
-		"CurrentPage":       0,
-		"FileScrollOffsets": scrollOffsets,
-	}
-	json.NewEncoder(w).Encode(userBookInfo)
+    var infoObj epub.Metadata
+    if err := json.Unmarshal(info, &infoObj); err != nil {
+        respondWithError(w, errors.New(SERVER_ERORR))
+        return
+    }
+
+    response := map[string]any{
+        "CoverImagePath": imgPath,
+        "Files": files,
+        "TableOfContents": tocObj,
+        "Info": infoObj,
+    }
+    json.NewEncoder(w).Encode(response)
 }

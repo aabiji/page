@@ -39,7 +39,7 @@
                 authError = response[utils.serverError];
                 return;
             }
-            goto("/read");
+            goto("/");
         });
     }
 

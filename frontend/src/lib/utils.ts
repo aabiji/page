@@ -2,11 +2,12 @@ import { goto } from "$app/navigation";
 
 export const serverError = "Server error";
 
-export async function callApi(url: string, method: string, json: object): Promise<any> {
+export async function callApi(url: string, method: string, json: object, isFile: bool=false): Promise<any> {
+    let data = isFile ? json : JSON.stringify(json);
     let payload = {
         method: method,
         credentials: "include",
-        body: method == "POST" ? JSON.stringify(json) : null,
+        body: method == "POST" ? data : null,
     };
     const response = await fetch(url, payload as RequestInit);
     return response.json();
@@ -18,6 +19,18 @@ export async function downloadFile(url: string): Promise<string> {
         mode: "cors",
     });
     return response.text();
+}
+
+export function cacheBookId(id: string) {
+    let ids = localStorage.getItem("bookIds");
+    ids = ids == null ? [] : JSON.parse(ids);
+    ids.push(id);
+    localStorage.setItem("bookIds", JSON.stringify(ids));
+}
+
+export function getBookIdCache(): int[] {
+    let ids = localStorage.getItem("bookIds");
+    return ids == null ? [] : JSON.parse(ids);
 }
 
 export async function hashSHA256(data: string): Promise<string> {

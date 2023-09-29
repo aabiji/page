@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func Contains(a []string, b string) bool {
+func contains(a []string, b string) bool {
 	for _, s := range a {
 		if s == b {
 			return true
@@ -20,7 +20,7 @@ func Contains(a []string, b string) bool {
 }
 
 // Find a node attribute either by expected key and value or by key.
-func FindAttribute(node *html.Node, key string, val string) string {
+func findAttribute(node *html.Node, key string, val string) string {
 	for _, attribute := range node.Attr {
 		if attribute.Key == key && val != "" && attribute.Val == val {
 			return attribute.Val
@@ -32,7 +32,7 @@ func FindAttribute(node *html.Node, key string, val string) string {
 }
 
 // Set a node's attr to a value
-func SetAttribute(node *html.Node, attr string, val string) {
+func setAttribute(node *html.Node, attr string, val string) {
 	for i, _ := range node.Attr {
 		if node.Attr[i].Key == attr {
 			node.Attr[i].Val = val
@@ -40,7 +40,7 @@ func SetAttribute(node *html.Node, attr string, val string) {
 	}
 }
 
-func FindNode(root *html.Node, tagName string) *html.Node {
+func findNode(root *html.Node, tagName string) *html.Node {
 	if root == nil {
 		return nil
 	}
@@ -50,7 +50,7 @@ func FindNode(root *html.Node, tagName string) *html.Node {
 	}
 
 	for node := root.FirstChild; node != nil; node = node.NextSibling {
-		found := FindNode(node, tagName)
+		found := findNode(node, tagName)
 		if found != nil {
 			return found
 		}
@@ -59,7 +59,7 @@ func FindNode(root *html.Node, tagName string) *html.Node {
 	return nil
 }
 
-func ParseHTML(filename string) (*html.Node, error) {
+func parseHTML(filename string) (*html.Node, error) {
 	htmlContents, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func ParseHTML(filename string) (*html.Node, error) {
 	return document, nil
 }
 
-func ParseXML[T Container | NCX | Package](filename string) (T, error) {
+func parseXML[T Container | NCX | Package](filename string) (T, error) {
 	var t T
 
 	file, err := os.ReadFile(filename)
@@ -92,7 +92,7 @@ func ParseXML[T Container | NCX | Package](filename string) (T, error) {
 // Get the filename without the extention or leading directories.
 // ex.
 // '/path/to/file.txt' becomes 'file'
-func GetFileBase(filename string) string {
+func getFileBase(filename string) string {
 	i := 0
 	parts := strings.Split(filename, string(os.PathSeparator))
 	if len(parts) > 0 {
@@ -102,7 +102,7 @@ func GetFileBase(filename string) string {
 }
 
 // Unzip filename into outdir
-func Unzip(filename, outdir string) error {
+func unzip(filename, outdir string) error {
 	archive, err := zip.OpenReader(filename)
 	if err != nil {
 		return err

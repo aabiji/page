@@ -5,36 +5,33 @@
     import { EpubViewer } from "./epub";
     import * as utils from "$lib/utils";
 
-    export let bookName: string;
+    export let bookId: number;
 
     let errorOut = false;
     let bookView: HTMLElement;
     let toggleButton: HTMLElement;
     let leftSidepanl: HTMLElement;
     let book = writable({
-        CurrentPage: 0,
-        Epub: {
-            CoverImagePath: "",
-            Info: {
-                Author: "",
-                Contributor: "",
-                Coverage: "",
-                Date: "",
-                Description: "",
-                Identifier: "",
-                Language: "",
-                Publisher: "",
-                Relation: "",
-                Rights: "",
-                Source: "",
-                Subjects: [],
-                Title: "",
-            },
-            TableOfContents: [{
-                Path: "",
-                Name: "",
-            }],
+        CoverImagePath: "",
+        Info: {
+            Author: "",
+            Contributor: "",
+            Coverage: "",
+            Date: "",
+            Description: "",
+            Identifier: "",
+            Language: "",
+            Publisher: "",
+            Relation: "",
+            Rights: "",
+            Source: "",
+            Subjects: [],
+            Title: "",
         },
+        TableOfContents: [{
+            Path: "",
+            Name: "",
+        }],
     });
     let epub = writable(new EpubViewer([], [], 0));
 
@@ -44,19 +41,23 @@
     }
 
     onMount(() => {
-        utils.callApi(`http://localhost:8080/book/get/${bookName}`, "GET", {}).then((response) => {
+        utils.callApi(`http://localhost:8080/book/get/${bookId}`, "GET", {}).then((response) => {
             if (utils.serverError in response) {
                 errorOut = true;
                 console.log(response[utils.serverError]);
                 return;
             }
 
-            response.Epub.CoverImagePath = utils.coverImagePath(response.Epub.CoverImagePath);
+            let files = response.Files;
+            response.CoverImagePath = utils.coverImagePath(response.CoverImagePath);
             book.set(response);
 
-            let e = new EpubViewer(response.FileScrollOffsets, response.Epub.Files, response.CurrentPage, bookView);
-            epub.set(e);
-            $epub.render();
+            let url = `http://localhost:8080/user/book/get/${bookId}`;
+            utils.callApi(url, "GET", {}).then((response) => {
+                let e = new EpubViewer(response.ScrollOffsets, files, response.CurrentPage, bookView)
+                epub.set(e);
+                $epub.render();
+            });
         });
     });
 </script>
@@ -68,25 +69,25 @@
 {:else}
 <div class="container">
     <div class="left-sidepanel" bind:this={leftSidepanl}>
-        <h1> {$book.Epub.Info.Title} </h1>
-        <img alt="Ebook cover image" src={$book.Epub.CoverImagePath}/>
-        <h3> {$book.Epub.Info.Author} </h3>
+        <h1> {$book.Info.Title} </h1>
+        <img alt="Ebook cover image" src={$book.CoverImagePath}/>
+        <h3> {$book.Info.Author} </h3>
         <hr>
-        <h5> {$book.Epub.Info.Description} </h5>
-        <p> Date: {$book.Epub.Info.Date} </p>
-        <p> Contributor: {$book.Epub.Info.Contributor} </p>
-        <p> Coverage: {$book.Epub.Info.Coverage} </p>
-        <p> Source: {$book.Epub.Info.Source} </p>
-        <p> Rights: {$book.Epub.Info.Rights} </p>
-        <p> Relation: {$book.Epub.Info.Relation} </p>
-        <p> Publisher: {$book.Epub.Info.Publisher} </p>
-        <p> Language: {$book.Epub.Info.Language} </p>
-        <p> Identifier: {$book.Epub.Info.Identifier} </p>
-        <p> Subjects: {#each $book.Epub.Info.Subjects as subject} {subject}  {/each} </p>
+        <h5> {$book.Info.Description} </h5>
+        <p> Date: {$book.Info.Date} </p>
+        <p> Contributor: {$book.Info.Contributor} </p>
+        <p> Coverage: {$book.Info.Coverage} </p>
+        <p> Source: {$book.Info.Source} </p>
+        <p> Rights: {$book.Info.Rights} </p>
+        <p> Relation: {$book.Info.Relation} </p>
+        <p> Publisher: {$book.Info.Publisher} </p>
+        <p> Language: {$book.Info.Language} </p>
+        <p> Identifier: {$book.Info.Identifier} </p>
+        <p> Subjects: {#each $book.Info.Subjects as subject} {subject}  {/each} </p>
         <hr>
         <h3> Table of contents </h3>
         <ol>
-            {#each $book.Epub.TableOfContents as section}
+            {#each $book.TableOfContents as section}
                 <li><span on:click={$epub.jumpToSection(section.Path)}>{section.Name}</span></li>
             {/each}
         </ol>

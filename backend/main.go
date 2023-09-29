@@ -2,19 +2,51 @@ package main
 
 import (
 	"fmt"
+	"github.com/aabiji/page/backend/epub"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"os"
+	"os/user"
+	"path/filepath"
 	"time"
 )
 
+func setStorageDirectories() {
+	extractDir := os.Getenv("EPUB_EXTRACT_DIRECTORY")
+	uploadDir := os.Getenv("FILE_UPLOAD_DIRECTORY")
+	currentUser, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+
+	if extractDir == "" {
+		extractDir = filepath.Join(currentUser.HomeDir, "Page", "BOOKS")
+		if err := os.MkdirAll(extractDir, os.ModePerm); err != nil {
+			panic(err)
+		}
+	}
+	epub.EXTRACT_DIRECTORY = extractDir
+
+	if uploadDir == "" {
+		uploadDir = filepath.Join(currentUser.HomeDir, "Page", "FILES")
+		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+			panic(err)
+		}
+	}
+	FILE_UPLOAD_DIRECTORY = uploadDir
+}
+
 func main() {
+	setStorageDirectories()
+
 	router := mux.NewRouter()
 	router.HandleFunc("/user/auth", AuthAccount).Methods("POST")
 	router.HandleFunc("/user/create", CreateAccount).Methods("POST")
+	router.HandleFunc("/user/book/upload", UserUploadEpub).Methods("POST")
+    router.HandleFunc("/user/book/get/{id}", GetUserBookState).Methods("GET")
 
-	router.HandleFunc("/book/get/{name}", GetBook).Methods("GET")
-    router.HandleFunc("/book/upload", EpubUpload).Methods("POST")
+	router.HandleFunc("/book/get/{id}", GetBook).Methods("GET")
 	ServeFiles(router)
 
 	addr := "localhost:8080"

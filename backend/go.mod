@@ -2,8 +2,10 @@ module github.com/aabiji/page/backend
 
 go 1.21.1
 
+replace github.com/aabiji/page/backend/epub => ./epub
+
 require (
-	github.com/aabiji/page/backend/epub v0.0.0-20230924031915-f411001bbe94
+	github.com/aabiji/page/backend/epub v0.0.0-00010101000000-000000000000
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgx/v5 v5.4.3
 )

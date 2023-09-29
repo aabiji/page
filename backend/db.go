@@ -79,6 +79,12 @@ func (db *DB) Exec(sql string, params ...any) error {
 	return err
 }
 
+// Execute sql query on database while scanning values.
+func (db *DB) ExecScan(sql string, params []any, scanValues ...any) error {
+	row := db.conns.QueryRow(db.context, sql, params...)
+	return row.Scan(scanValues...)
+}
+
 // Read value from sql database.
 // sqlParams is a slice of all the input parameters for the query.
 // readParams is a slice of pointers for receiving values of the query.

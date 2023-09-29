@@ -10,5 +10,8 @@ Goals:
 - Nice app UI/UX, especially for the ebook paginated rendering
 - Interoperate with different services (Amazon, Apple itunes, Google Play ...)
 
+TODO;
+- fix account already exists error when server panics
+
 This project is currently still actively being developped.
 ![Current app state](screenshot.png)

@@ -13,8 +13,7 @@ import (
 )
 
 // The directory where the epub files will be extracted into.
-// Set by Storage struct in the server module.
-var STORAGE_DIRECTORY string
+var EXTRACT_DIRECTORY string
 
 type Section struct {
 	Path string `json:"Path"`
@@ -37,9 +36,9 @@ func New(filename string) (Epub, error) {
 		return Epub{}, errors.New("Invalid epub file")
 	}
 
-	e := Epub{Name: GetFileBase(filename)}
+	e := Epub{Name: getFileBase(filename)}
 
-	if err := Unzip(filename, e.absolutePath("")); err != nil {
+	if err := unzip(filename, e.absolutePath("")); err != nil {
 		return Epub{}, err
 	}
 	if err := e.verifyMimetype(); err != nil {
@@ -83,7 +82,7 @@ func (e *Epub) Debug() {
 
 // Path to a file inside the extracted epub file directory
 func (e *Epub) absolutePath(file string) string {
-	basePath := filepath.Join(STORAGE_DIRECTORY, e.Name)
+	basePath := filepath.Join(EXTRACT_DIRECTORY, e.Name)
 	if file == "" {
 		return basePath
 	}
@@ -104,7 +103,7 @@ func (e *Epub) absolutePath(file string) string {
 
 func (e *Epub) urlPath(file string) string {
 	s := e.absolutePath(file)
-	replace := STORAGE_DIRECTORY
+	replace := EXTRACT_DIRECTORY
 	if replace != "" {
 		replace += "/"
 	}
@@ -127,7 +126,7 @@ func (e *Epub) verifyMimetype() error {
 }
 
 func (e *Epub) parseContainer() error {
-	c, err := ParseXML[Container](e.absolutePath("META-INF/container.xml"))
+	c, err := parseXML[Container](e.absolutePath("META-INF/container.xml"))
 	if err != nil {
 		return err
 	}
@@ -176,23 +175,23 @@ func (e *Epub) getCoverImagePath() error {
 	}
 
 	e.coverPath = e.absolutePath(e.coverPath)
-	document, err := ParseHTML(e.coverPath)
+	document, err := parseHTML(e.coverPath)
 	if err != nil {
 		return err
 	}
 
-	imageNode := FindNode(document, "img")
+	imageNode := findNode(document, "img")
 	if imageNode == nil {
-		imageNode = FindNode(document, "image")
+		imageNode = findNode(document, "image")
 	}
 
 	if imageNode == nil {
 		return nil // Epub doesn't have cover image
 	}
 
-	e.CoverImagePath = FindAttribute(imageNode, "src", "")
+	e.CoverImagePath = findAttribute(imageNode, "src", "")
 	if e.CoverImagePath == "" {
-		e.CoverImagePath = FindAttribute(imageNode, "href", "")
+		e.CoverImagePath = findAttribute(imageNode, "href", "")
 	}
 
 	return nil
@@ -204,11 +203,11 @@ func (e *Epub) getLinkedCSS(head *html.Node) (string, error) {
 	var nodesToRemove []*html.Node
 
 	for node := head.FirstChild; node != nil; node = node.NextSibling {
-		if node.Data != "link" || FindAttribute(node, "rel", "stylesheet") == "" {
+		if node.Data != "link" || findAttribute(node, "rel", "stylesheet") == "" {
 			continue
 		}
 
-		relativeCssPath := FindAttribute(node, "href", "")
+		relativeCssPath := findAttribute(node, "href", "")
 		cssPath := e.absolutePath(relativeCssPath)
 
 		cssFile, err := os.ReadFile(cssPath)
@@ -229,7 +228,7 @@ func (e *Epub) getLinkedCSS(head *html.Node) (string, error) {
 
 // Inject a style node containing css into the file's html document
 func (e *Epub) injectCSS(root *html.Node) error {
-	head := FindNode(root, "head")
+	head := findNode(root, "head")
 	if head == nil {
 		return errors.New(fmt.Sprintf("<head></head> not found"))
 	}
@@ -251,7 +250,7 @@ func (e *Epub) fixLinks(root *html.Node) error {
 	}
 
 	if root.Type == html.ElementNode && root.Data == "a" {
-		link := FindAttribute(root, "href", "")
+		link := findAttribute(root, "href", "")
 		if link == "" {
 			return nil
 		}
@@ -262,7 +261,7 @@ func (e *Epub) fixLinks(root *html.Node) error {
 		if matched {
 			return nil
 		}
-		SetAttribute(root, "href", e.urlPath(link))
+		setAttribute(root, "href", e.urlPath(link))
 	} else if root.Type == html.ElementNode && root.Data == "image" || root.Data == "img" {
 		var imgSrc string
 		if root.Data == "image" {
@@ -271,8 +270,8 @@ func (e *Epub) fixLinks(root *html.Node) error {
 			imgSrc = "src"
 		}
 
-		relativeImgPath := FindAttribute(root, imgSrc, "")
-		SetAttribute(root, imgSrc, e.urlPath(relativeImgPath))
+		relativeImgPath := findAttribute(root, imgSrc, "")
+		setAttribute(root, imgSrc, e.urlPath(relativeImgPath))
 	}
 
 	for node := root.FirstChild; node != nil; node = node.NextSibling {
@@ -290,7 +289,7 @@ func (e *Epub) processFile(relativePath string) (string, error) {
 	path := e.absolutePath(relativePath)
 
 	var err error
-	document, err := ParseHTML(path)
+	document, err := parseHTML(path)
 	if err != nil {
 		return "", err
 	}
@@ -333,7 +332,7 @@ func (e *Epub) cleanDescription() {
 }
 
 func (e *Epub) parseContent() error {
-	p, err := ParseXML[Package](e.absolutePath(e.contentFilename))
+	p, err := parseXML[Package](e.absolutePath(e.contentFilename))
 	if err != nil {
 		return err
 	}
@@ -384,7 +383,7 @@ func (e *Epub) parseTableOfContents() error {
 		return nil
 	}
 
-	t, err := ParseXML[NCX](e.tableOfContentsPath)
+	t, err := parseXML[NCX](e.tableOfContentsPath)
 	if err != nil {
 		return err
 	}
