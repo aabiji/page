@@ -1,11 +1,16 @@
 <script lang="ts">
-    let userProfilePic = "default-profile.png";
+    import { onMount } from "svelte";
+
+    let userProfilePic: string;
+    onMount(() => {
+        userProfilePic = `${window.origin}/default-profile.png`;
+    });
 </script>
 
 <div class="bar">
     <h1 title="Home" class="logo"><a href="/">Page</a></h1> 
     <input title="Search" type="text" placeholder="Search books">
-    <a title="Account" href="/account"><img src={userProfilePic} /></a>
+    <a title="Account" href="/account"><img alt="Profile photo" src={userProfilePic} /></a>
 </div>
 
 <style>

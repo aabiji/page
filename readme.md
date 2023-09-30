@@ -11,7 +11,10 @@ Goals:
 - Interoperate with different services (Amazon, Apple itunes, Google Play ...)
 
 TODO;
-- fix account already exists error when server panics
+- Fix account already exists error when server panics
+- Better frontend error handling
+- Log backend errors
+- Fix bugs
 
 This project is currently still actively being developped.
 ![Current app state](screenshot.png)

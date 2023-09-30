@@ -4,7 +4,7 @@
     import Navbar from "./navbar.svelte";
     import Book from "./book.svelte";
 
-    let bookIds = [];
+    let bookIds: number[] = [];
     let fileInput: HTMLElement;
     function uploadFile(event: any) {
         const file = event.target.files[0];

@@ -2,7 +2,7 @@ import { goto } from "$app/navigation";
 
 export const serverError = "Server error";
 
-export async function callApi(url: string, method: string, json: object, isFile: bool=false): Promise<any> {
+export async function callApi(url: string, method: string, json: object, isFile: boolean=false): Promise<any> {
     let data = isFile ? json : JSON.stringify(json);
     let payload = {
         method: method,
@@ -22,13 +22,13 @@ export async function downloadFile(url: string): Promise<string> {
 }
 
 export function cacheBookId(id: string) {
-    let ids = localStorage.getItem("bookIds");
-    ids = ids == null ? [] : JSON.parse(ids);
+    let idStr = localStorage.getItem("bookIds");
+    let ids = idStr == null ? [] : JSON.parse(idStr);
     ids.push(id);
     localStorage.setItem("bookIds", JSON.stringify(ids));
 }
 
-export function getBookIdCache(): int[] {
+export function getBookIdCache(): number[] {
     let ids = localStorage.getItem("bookIds");
     return ids == null ? [] : JSON.parse(ids);
 }

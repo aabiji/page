@@ -5,7 +5,7 @@
     import { EpubViewer } from "./epub";
     import * as utils from "$lib/utils";
 
-    export let bookId: number;
+    export let bookId: string;
 
     let errorOut = false;
     let bookView: HTMLElement;

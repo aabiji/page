@@ -122,8 +122,10 @@ export class EpubViewer {
         let overflow = Math.max(0, rect.bottom - end);
         let adjustedHeight = rect.height - overflow;
 
+        let parentTags = ["svg", "div", "picture"];
         let parent = lastImage.parentNode as HTMLElement;
-        let nodeToResize = parent != null && parent.nodeName == "svg" ? parent : lastImage;
+        let nodeToResize = parent != null && parentTags.includes(parent.nodeName) ? parent : lastImage;
+
         nodeToResize.style.height = `${adjustedHeight}px`;
         nodeToResize.style.width = "auto";
     }
