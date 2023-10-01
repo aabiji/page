@@ -28,9 +28,10 @@ export function cacheBookId(id: string) {
     localStorage.setItem("bookIds", JSON.stringify(ids));
 }
 
-export function getBookIdCache(): number[] {
-    let ids = localStorage.getItem("bookIds");
-    return ids == null ? [] : JSON.parse(ids);
+export function getFromCache(key: string): object {
+    let obj = localStorage.getItem(key);
+    let type = key == "bookIds" ? [] : {};
+    return obj == null ? type : JSON.parse(obj);
 }
 
 export async function hashSHA256(data: string): Promise<string> {

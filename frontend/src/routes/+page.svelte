@@ -12,14 +12,28 @@
         formData.append("file", file);
         let url = "http://localhost:8080/user/book/upload";
         utils.callApi(url, "POST", formData, true).then((response) => {
-            utils.cacheBookId(response.BookId);
-            bookIds = utils.getBookIdCache();
+            if ("Server error" in response) return;
+            let bid = response.BookId;
+            utils.cacheBookId(bid);
+            utils.callApi(`http://localhost:8080/book/get/${bid}`, "GET", {}).then((r) => {
+                r.CoverImagePath = utils.coverImagePath(r.CoverImagePath);
+                localStorage.setItem(bid, JSON.stringify(r));
+                bookIds = utils.getFromCache("bookIds");
+            });
         });
+    }
+
+    function getBook(id: string) {
+        let book = {Cover: "default-cover-image.png", Title: ""};
+        let obj = utils.getFromCache(id);
+        book.Title = obj.Info.Title;
+        book.Cover = obj.CoverImagePath;
+        return book;
     }
 
     onMount(() => {
         utils.redirectIfNotAuth();
-        bookIds = utils.getBookIdCache();
+        bookIds = utils.getFromCache("bookIds");
     });
 </script>
 
@@ -31,8 +45,8 @@
         <button on:click={() => fileInput.click()}> Upload book </button>
     </div>
     <div class="collection">
-        {#each bookIds as bookId}
-            <Book name={bookId} id={bookId} />
+        {#each bookIds as id}
+            <Book cover={getBook(id).Cover} name={getBook(id).Title} id={id} />
         {/each}
     </div>
 </div>

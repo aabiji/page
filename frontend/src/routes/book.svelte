@@ -2,11 +2,12 @@
     import { goto } from "$app/navigation";
     export let name: string;
     export let id: string;
+    export let cover: string;
     const readBook = () => goto(`${window.origin}/read/${id}`);
 </script>
 
 <div on:click={readBook}>
-    <img src="default-cover-image.png">
+    <img src={cover}>
     <p> {name} </p>
 </div>
 

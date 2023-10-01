@@ -15,8 +15,9 @@ TODO;
 - Fix account already exists error when server panics
 - Better frontend error handling
 - Log backend errors
-- Cache book info in localStorage
-- Render appropriate book title and cover image
+- remove book
+- search books
+- better epub parsing
 - Don't call backend api if book info is already in cache
 - Call backend api to update user book info when on dom page event
 - fix image url bug from atomic habits
@@ -24,5 +25,7 @@ TODO;
 - dynamic ui css
 - long duration session cookies
 
-This project is currently still actively being developped.
+--This project is currently still actively being developped.--
+I'm currently a break from this project. The basic mvp is complete,
+but I want to move on to something else.
 ![Current app state](screenshot.png)

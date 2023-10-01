@@ -118,7 +118,7 @@ func UserUploadEpub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scrollOffsets := make([]int, pageCount) // TODO: don't allocate please
+	scrollOffsets := make([]int, pageCount)
 	sql := "INSERT INTO UserBooks (UserId, BookId, CurrentPage, ScrollOffsets) VALUES ($1,$2,$3,$4);"
 	if err := database.Exec(sql, c.Value, bookId, 0, scrollOffsets); err != nil {
 		respondWithError(w, SERVER_ERROR)

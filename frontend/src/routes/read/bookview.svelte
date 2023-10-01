@@ -41,23 +41,14 @@
     }
 
     onMount(() => {
-        utils.callApi(`http://localhost:8080/book/get/${bookId}`, "GET", {}).then((response) => {
-            if (utils.serverError in response) {
-                errorOut = true;
-                console.log(response[utils.serverError]);
-                return;
-            }
+        let bookJson = utils.getFromCache(bookId);
+        book.set(bookJson);
 
-            let files = response.Files;
-            response.CoverImagePath = utils.coverImagePath(response.CoverImagePath);
-            book.set(response);
-
-            let url = `http://localhost:8080/user/book/get/${bookId}`;
-            utils.callApi(url, "GET", {}).then((response) => {
-                let e = new EpubViewer(response.ScrollOffsets, files, response.CurrentPage, bookView)
-                epub.set(e);
-                $epub.render();
-            });
+        let url = `http://localhost:8080/user/book/get/${bookId}`;
+        utils.callApi(url, "GET", {}).then((response) => {
+            let e = new EpubViewer(response.ScrollOffsets, bookJson.Files, response.CurrentPage, bookView)
+            epub.set(e);
+            $epub.render();
         });
     });
 </script>

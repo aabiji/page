@@ -28,14 +28,8 @@ func respondWithError(w http.ResponseWriter, err string) {
 
 // Add cookie header to the http response sent to the client.
 func setCookie(w http.ResponseWriter, r *http.Request, name, value string) {
-	cookie := http.Cookie{
-		Name:     name,
-		Value:    value,
-		Path:     "/",
-		HttpOnly: false,
-	}
+	cookie := http.Cookie{Name: name, Value: value, Path: "/", HttpOnly: false}
 	http.SetCookie(w, &cookie)
-
 	// Empty json response
 	response := map[string]string{}
 	json.NewEncoder(w).Encode(response)
