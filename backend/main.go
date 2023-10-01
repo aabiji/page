@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/aabiji/page/backend/epub"
-	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
 	"time"
+
+	"github.com/aabiji/page/backend/epub"
+	"github.com/gorilla/mux"
 )
 
 func setStorageDirectories() {
@@ -41,10 +42,10 @@ func main() {
 	setStorageDirectories()
 
 	router := mux.NewRouter()
-	router.HandleFunc("/user/auth", AuthAccount).Methods("POST")
+	router.HandleFunc("/user/login", AuthAccount).Methods("POST")
 	router.HandleFunc("/user/create", CreateAccount).Methods("POST")
 	router.HandleFunc("/user/book/upload", UserUploadEpub).Methods("POST")
-    router.HandleFunc("/user/book/get/{id}", GetUserBookState).Methods("GET")
+	router.HandleFunc("/user/book/get/{id}", GetUserBookInfo).Methods("GET")
 
 	router.HandleFunc("/book/get/{id}", GetBook).Methods("GET")
 	ServeFiles(router)

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/aabiji/page/backend/epub"
@@ -10,15 +9,19 @@ import (
 )
 
 var database DB = NewDatabase()
-var FILE_UPLOAD_DIRECTORY string // Directory where uploaded files will be stored
+var FILE_UPLOAD_DIRECTORY string  // Directory where uploaded files will be stored
+const MAX_UPLOAD_SIZE = 100 << 20 // 100 megabyte limit on all uploaded files
 const (
+	USERID             = "userId"
 	NOT_FOUND          = "Entries not found"
 	BAD_CLIENT_REQUEST = "Bad client request"
-	SERVER_ERORR       = "Internal server error. Please try again"
-	MAX_UPLOAD_SIZE    = 100 << 20 // 100 megabyte limit on all uploaded files
+	SERVER_ERROR       = "Internal server error. Please try again"
+	DUPLICATE_ACCOUNT  = "Account already exists. Create a new one with a different email."
+	ACCOUNT_NOT_FOUND  = "Account not found. Forgot your password?"
 )
 
 // GET /static/* (ex. /static/path/to/file.html)
+//
 // Serve requested file from disk to the client.
 func ServeFiles(router *mux.Router) {
 	route := "/static/"
@@ -26,82 +29,99 @@ func ServeFiles(router *mux.Router) {
 	router.PathPrefix(route).Handler(http.StripPrefix(route, fs))
 }
 
-// POST /user/auth
+// POST /user/login
+//
 // Request payload: {"email": "", "password": "", "confirm": ""}
+//
 // Response: An empty json response and a cookie containing the user's id.
-// Validate user login credentials and set a "userId" cookie to manage client state.
+//
+// Validate user login credentials and set a USERID cookie to manage client state.
 func AuthAccount(w http.ResponseWriter, r *http.Request) {
 	var user User
 	if err := getRequestJson(w, r, &user); err != nil {
-		respondWithError(w, errors.New(BAD_CLIENT_REQUEST))
+		respondWithError(w, BAD_CLIENT_REQUEST)
+		return
+	}
+	if user.Email == "" || user.Password == "" {
+		respondWithError(w, BAD_CLIENT_REQUEST)
 		return
 	}
 
 	sql := "SELECT UserId FROM Users WHERE Email=$1 AND Password=$2;"
 	_, err := database.Read(sql, []any{user.Email, user.Password}, []any{&user.Id})
 	if err != nil && err.Error() == NOT_FOUND {
-		msg := "Account not found. Forgot your password?"
-		respondWithError(w, errors.New(msg))
+		respondWithError(w, ACCOUNT_NOT_FOUND)
 		return
 	} else if err != nil {
-		respondWithError(w, errors.New(SERVER_ERORR))
+		respondWithError(w, SERVER_ERROR)
 		return
 	}
 
-	setCookie(w, r, "userId", user.Id)
+	setCookie(w, r, USERID, user.Id)
 }
 
 // POST /user/create
+//
 // Request payload: {"email": "", "password": "", "confirm":""}
+//
 // Response: An empty json response and a cookie containing the user's id.
-// Validate and create new user account and set a "userId" cookie to manage client state.
+//
+// Validate and create new user account and set a USERID cookie to manage client state.
 func CreateAccount(w http.ResponseWriter, r *http.Request) {
 	var user User
 	if err := getRequestJson(w, r, &user); err != nil {
-		respondWithError(w, errors.New(BAD_CLIENT_REQUEST))
+		respondWithError(w, BAD_CLIENT_REQUEST)
+		return
+	}
+	if user.Email == "" || user.Password == "" {
+		respondWithError(w, BAD_CLIENT_REQUEST)
 		return
 	}
 
 	sql := "SELECT UserId FROM Users WHERE Email=$1;"
 	_, err := database.Read(sql, []any{user.Email}, []any{&user.Id})
 	if err == nil {
-		msg := "Account already exists. Create a new one with a different email."
-		respondWithError(w, errors.New(msg))
+		respondWithError(w, DUPLICATE_ACCOUNT)
 		return
 	}
 
 	sql = "INSERT INTO Users (Email, Password) VALUES ($1,$2) RETURNING UserId;"
 	err = database.ExecScan(sql, []any{user.Email, user.Password}, &user.Id)
 	if err != nil {
-		respondWithError(w, errors.New(SERVER_ERORR))
+		respondWithError(w, SERVER_ERROR)
 		return
 	}
 
-	setCookie(w, r, "userId", user.Id)
+	setCookie(w, r, USERID, user.Id)
 }
 
 // POST /user/book/upload
-// Request payload: Multipart form data with field "file".
+//
+// Request payload:
+// Multipart form data with field "file".
+// Cookie with name USERID and value set to the user's id.
+//
 // Response: {"BookId": ""}
+//
 // Upload a user selected epub file to the server. Add it to the user's collection
-// of books and return the generated bookId.
+// of books and return the generated bookId
 func UserUploadEpub(w http.ResponseWriter, r *http.Request) {
 	pageCount, bookId, err := receiveEpub(w, r)
 	if err != nil {
-		respondWithError(w, err)
+		respondWithError(w, err.Error())
 		return
 	}
 
-	c, err := r.Cookie("userId")
-	if err != nil {
-		respondWithError(w, errors.New(BAD_CLIENT_REQUEST))
+	c, err := r.Cookie(USERID)
+	if err != nil { // Cookie not found
+		respondWithError(w, BAD_CLIENT_REQUEST)
 		return
 	}
 
 	scrollOffsets := make([]int, pageCount) // TODO: don't allocate please
 	sql := "INSERT INTO UserBooks (UserId, BookId, CurrentPage, ScrollOffsets) VALUES ($1,$2,$3,$4);"
 	if err := database.Exec(sql, c.Value, bookId, 0, scrollOffsets); err != nil {
-		respondWithError(w, errors.New(SERVER_ERORR))
+		respondWithError(w, SERVER_ERROR)
 		return
 	}
 
@@ -110,12 +130,16 @@ func UserUploadEpub(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /user/book/get/{id}
+//
+// Request payload: Cookie with name USERID and value set to the user's id.
+//
 // Response: {"CurrentPage": "", "ScrollOffsets": ""}
+//
 // Get user specific information related to specific book.
-func GetUserBookState(w http.ResponseWriter, r *http.Request) {
-	c, err := r.Cookie("userId")
-	if err != nil {
-		respondWithError(w, errors.New(BAD_CLIENT_REQUEST))
+func GetUserBookInfo(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie(USERID)
+	if err != nil { // Cookie not found
+		respondWithError(w, BAD_CLIENT_REQUEST)
 		return
 	}
 	bookId := mux.Vars(r)["id"]
@@ -125,7 +149,7 @@ func GetUserBookState(w http.ResponseWriter, r *http.Request) {
 	sql := "SELECT CurrentPage, ScrollOffsets FROM UserBooks WHERE UserId=$1 AND BookId=$2;"
 	_, err = database.Read(sql, []any{c.Value, bookId}, []any{&currentPage, &scrollOffsets})
 	if err != nil {
-		respondWithError(w, errors.New(SERVER_ERORR))
+		respondWithError(w, SERVER_ERROR)
 		return
 	}
 
@@ -137,27 +161,30 @@ func GetUserBookState(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /book/get/{id}
+//
 // Response:
-// {
-//  	"Files": [""],
-//  	"CoverImagePath": "",
-//  	"TableOfContents": [{"Path": "", "Section": ""}],
-//		"Info": {
-//			"Language": "",
-//			"Author": "",
-//			"Title": "",
-//			"Identifier": "",
-//			"Contributor": ""
-// 			"Rights": "",
-//			"Source": "",
-//			"Coverage": "",
-// 			"Relation": "",
-// 			"Publisher": "",
-// 			"Description": "",
-// 			"Date": "",
-// 			"Subjects": [""],
-//		}
-// }
+//
+//	{
+//	 	"Files": [""],
+//	 	"CoverImagePath": "",
+//	 	"TableOfContents": [{"Path": "", "Section": ""}],
+//			"Info": {
+//				"Language": "",
+//				"Author": "",
+//				"Title": "",
+//				"Identifier": "",
+//				"Contributor": ""
+//				"Rights": "",
+//				"Source": "",
+//				"Coverage": "",
+//				"Relation": "",
+//				"Publisher": "",
+//				"Description": "",
+//				"Date": "",
+//				"Subjects": [""],
+//			}
+//	}
+//
 // Get detailed information about a book using it's unique id.
 func GetBook(w http.ResponseWriter, r *http.Request) {
 	bookId := mux.Vars(r)["id"]
@@ -168,19 +195,19 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 	sql := "SELECT CoverImagePath, Files, TableOfContents, Info FROM Books WHERE BookId=$1;"
 	_, err := database.Read(sql, []any{bookId}, []any{&imgPath, &files, &toc, &info})
 	if err != nil {
-		respondWithError(w, errors.New(SERVER_ERORR))
+		respondWithError(w, SERVER_ERROR)
 		return
 	}
 
 	var tocObj []epub.Section
 	if err := json.Unmarshal(toc, &tocObj); err != nil {
-		respondWithError(w, errors.New(SERVER_ERORR))
+		respondWithError(w, SERVER_ERROR)
 		return
 	}
 
 	var infoObj epub.Metadata
 	if err := json.Unmarshal(info, &infoObj); err != nil {
-		respondWithError(w, errors.New(SERVER_ERORR))
+		respondWithError(w, SERVER_ERROR)
 		return
 	}
 

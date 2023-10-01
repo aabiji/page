@@ -30,7 +30,7 @@
     async function authenticate() {
         validateAuthInfo();
         if (authError != "") return;
-        let url = `http://localhost:8080/user/${isLogin ? "auth" : "create"}`;
+        let url = `http://localhost:8080/user/${isLogin ? "login" : "create"}`;
         let unhashedPassword = authInfo.password;
         authInfo.password = await utils.hashSHA256(authInfo.password);
         utils.callApi(url, "POST", authInfo).then((response) => {
