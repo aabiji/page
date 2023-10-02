@@ -12,4 +12,4 @@
 </script>
 
 <Navbar />
-<BookViewer bookId={$page.params.bookId} />
+<BookViewer bookId={parseInt($page.params.bookId)} />

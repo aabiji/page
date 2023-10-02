@@ -1,14 +1,14 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    export let name: string;
-    export let id: string;
+    export let id: number;
+    export let title: string;
     export let cover: string;
     const readBook = () => goto(`${window.origin}/read/${id}`);
 </script>
 
 <div on:click={readBook}>
     <img src={cover}>
-    <p> {name} </p>
+    <p> {title} </p>
 </div>
 
 <style>

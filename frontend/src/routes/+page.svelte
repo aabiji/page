@@ -1,39 +1,56 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import * as utils from "$lib/utils";
-    import Navbar from "./navbar.svelte";
+    import { writable } from "svelte/store";
+ 
     import Book from "./book.svelte";
+    import Navbar from "./navbar.svelte";
+    import * as utils from "$lib/utils";
+ 
+    interface BookDisplayInfo {
+        id: number,
+        cover: string,
+        title: string,
+    };
+ 
+    let books = writable<BookDisplayInfo[]>([]);
+    function loadBooks(bookIds: number[]) {
+        $books = [];
+        for (let i = 0; i < bookIds.length; i++) {
+            let id = bookIds[i];
+            let obj: utils.Book = utils.cacheGet(utils.BookKey(id));
+            let display: BookDisplayInfo = {
+                id: id,
+                title: obj.Info.Title,
+                cover: obj.CoverImagePath,    
+            };
+            $books.push(display);
+        }
+    }
 
-    let bookIds: number[] = [];
+    function addBook(id: number) {
+        let url = `${utils.backendOrigin}/book/get/${id}`
+        utils.callApi(url, "GET").then((info: utils.Book) => {
+            info.CoverImagePath = utils.coverImagePath(info.CoverImagePath);
+            utils.cacheBook(id, info);
+            loadBooks(utils.cacheGet(utils.BooksKey));
+        });
+    }
+
     let fileInput: HTMLElement;
     function uploadFile(event: any) {
         const file = event.target.files[0];
         const formData = new FormData();
         formData.append("file", file);
-        let url = "http://localhost:8080/user/book/upload";
+        let url = `${utils.backendOrigin}/user/book/upload`;
         utils.callApi(url, "POST", formData, true).then((response) => {
-            if ("Server error" in response) return;
-            let bid = response.BookId;
-            utils.cacheBookId(bid);
-            utils.callApi(`http://localhost:8080/book/get/${bid}`, "GET", {}).then((r) => {
-                r.CoverImagePath = utils.coverImagePath(r.CoverImagePath);
-                localStorage.setItem(bid, JSON.stringify(r));
-                bookIds = utils.getFromCache("bookIds");
-            });
+            if (utils.serverError in response) return;
+            addBook(response.BookId);
         });
-    }
-
-    function getBook(id: string) {
-        let book = {Cover: "default-cover-image.png", Title: ""};
-        let obj = utils.getFromCache(id);
-        book.Title = obj.Info.Title;
-        book.Cover = obj.CoverImagePath;
-        return book;
     }
 
     onMount(() => {
         utils.redirectIfNotAuth();
-        bookIds = utils.getFromCache("bookIds");
+        loadBooks(utils.cacheGet(utils.BooksKey));
     });
 </script>
 
@@ -45,8 +62,8 @@
         <button on:click={() => fileInput.click()}> Upload book </button>
     </div>
     <div class="collection">
-        {#each bookIds as id}
-            <Book cover={getBook(id).Cover} name={getBook(id).Title} id={id} />
+        {#each $books as b}
+            <Book cover={b.cover} title={b.title} id={b.id} />
         {/each}
     </div>
 </div>

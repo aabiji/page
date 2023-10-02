@@ -5,34 +5,13 @@
     import { EpubViewer } from "./epub";
     import * as utils from "$lib/utils";
 
-    export let bookId: string;
+    export let bookId: number;
 
     let errorOut = false;
     let bookView: HTMLElement;
     let toggleButton: HTMLElement;
     let leftSidepanl: HTMLElement;
-    let book = writable({
-        CoverImagePath: "",
-        Info: {
-            Author: "",
-            Contributor: "",
-            Coverage: "",
-            Date: "",
-            Description: "",
-            Identifier: "",
-            Language: "",
-            Publisher: "",
-            Relation: "",
-            Rights: "",
-            Source: "",
-            Subjects: [],
-            Title: "",
-        },
-        TableOfContents: [{
-            Path: "",
-            Name: "",
-        }],
-    });
+    let book = writable(new utils.Book());
     let epub = writable(new EpubViewer([], [], 0));
 
     function toggelLeftSidepanel() {
@@ -41,11 +20,11 @@
     }
 
     onMount(() => {
-        let bookJson = utils.getFromCache(bookId);
+        let bookJson = utils.cacheGet(utils.BookKey(bookId));
         book.set(bookJson);
 
-        let url = `http://localhost:8080/user/book/get/${bookId}`;
-        utils.callApi(url, "GET", {}).then((response) => {
+        let url = `${utils.backendOrigin}/user/book/get/${bookId}`;
+        utils.callApi(url, "GET").then((response) => {
             let e = new EpubViewer(response.ScrollOffsets, bookJson.Files, response.CurrentPage, bookView)
             epub.set(e);
             $epub.render();
@@ -61,7 +40,7 @@
 <div class="container">
     <div class="left-sidepanel" bind:this={leftSidepanl}>
         <h1> {$book.Info.Title} </h1>
-        <img alt="Ebook cover image" src={$book.CoverImagePath}/>
+        <img alt="Ebook cover" src={$book.CoverImagePath}/>
         <h3> {$book.Info.Author} </h3>
         <hr>
         <h5> {$book.Info.Description} </h5>
@@ -79,7 +58,9 @@
         <h3> Table of contents </h3>
         <ol>
             {#each $book.TableOfContents as section}
-                <li><span on:click={$epub.jumpToSection(section.Path)}>{section.Name}</span></li>
+                <li><button on:click={() => $epub.jumpToSection(section.Path)}>
+                    {section.Name}
+                </button></li>
             {/each}
         </ol>
     </div>
@@ -96,12 +77,15 @@
 {/if}
 
 <style>
-    span {
+    button {
         cursor: pointer;
         text-decoration: none;
         color: var(--accent-color);
+        background-color: var(--background-accent);
+        font-size: 16px;
     }
-    span:hover {
+ 
+    button:hover {
         color: var(--accent-color-darken);
     }
 

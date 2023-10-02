@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import * as utils from "$lib/utils";
@@ -14,25 +14,52 @@
         authState = isLogin ? "Login" : "Create account";
     }
 
+    function isValidEmail(): boolean {
+        let regex = /^\S+@\S+\.\S+$/;
+        return regex.test(authInfo.email);
+    }
+ 
+    function isIncompleteForm(): boolean {
+        let confirmEmpty = !isLogin && authInfo.confirm == "";
+        return authInfo.email == "" || authInfo.password == "" || confirmEmpty;
+    }
+
+    // To be "safe", a password must be at least 10 characters long
+    // and must contain at least 1 special character.
+    function isSafePassword(): boolean {
+        let longEnough = authInfo.password.length >= 10;
+        let specialChars = ["!", "~", "@", "#", "$", "%", "&", "*", "^", "?"];
+        let hasSpecialChar = specialChars.some((c) => authInfo.password.includes(c));
+        return longEnough && hasSpecialChar;
+    }
+
     function validateAuthInfo() {
-        if (authInfo.email == "" || authInfo.password == "" ||
-            (authInfo.confirm == "" && !isLogin)) {
+        if (isIncompleteForm()) {
             authError = "Please fill out all form fields.";
-        } else if (!authInfo.email.match(/^\S+@\S+\.\S+$/)) {
-            authError = "Please enter a valide email address.";
-        } else if (!isLogin && authInfo.confirm != authInfo.password) {
-            authError = "Password and repeated password must match";
+        } else if (!isValidEmail()) {
+            authError = "Please enter a valid email address.";
+        } else if (!isSafePassword()) {
+            authError = "Password must be at least 8 characters long and must contain 1 special character.";
+        } else if (!isLogin && authInfo.password != authInfo.confirm) {
+            authError = "Password and repeated password must match.";
         } else {
             authError = "";
         }
     }
 
+    async function hashSHA256(data: string): Promise<string> {
+        let encoded = new TextEncoder().encode(data);
+        let buffer = await window.crypto.subtle.digest("SHA-256", encoded);
+        let hash = Array.from(new Uint8Array(buffer));
+        return hash.map(byte => byte.toString(16).padStart(2, "0")).join("");
+    }
+
     async function authenticate() {
         validateAuthInfo();
         if (authError != "") return;
-        let url = `http://localhost:8080/user/${isLogin ? "login" : "create"}`;
+        let url = `${utils.backendOrigin}/user/${isLogin ? "login" : "create"}`;
         let unhashedPassword = authInfo.password;
-        authInfo.password = await utils.hashSHA256(authInfo.password);
+        authInfo.password = await hashSHA256(authInfo.password);
         utils.callApi(url, "POST", authInfo).then((response) => {
             authInfo.password = unhashedPassword;
             if (utils.serverError in response) {
@@ -42,14 +69,20 @@
             goto("/");
         });
     }
-
+ 
     onMount(() => {
         utils.redirectIfNotAuth();
+        // Submit form with enter key
+        document.onkeyup = (event) => {
+            if (event.key != "Enter") return;
+            let submit = document.getElementsByClassName("button")[0] as HTMLElement;
+            submit.click();
+        }
     });
 </script>
 
 <div class="container">
-    <div>
+    <div class="inner">
         <h2 class="logo"> Page </h2>
         <h2> | {authState} </h2><br>
         <p class="error-message"> {authError} </p>
@@ -59,13 +92,13 @@
         {#if !isLogin}
             <input bind:value={authInfo.confirm} type="password" placeholder="Repeat password"><br>
         {/if}
-        <button on:click={authenticate}> {authState} </button><br>
+        <button class="button" on:click={authenticate}> {authState} </button><br>
 
         {#if !isLogin}
-            <a on:click={toggleState}> Already have an account? </a><br>
+            <button class="option" on:click={toggleState}> Already have an account? </button>
         {:else}
-            <a> Forgot password? </a><br>
-            <a on:click={toggleState}> Don't have an account? </a><br>
+            <button class="option"> Forgot password? </button><br>
+            <button class="option" on:click={toggleState}> Don't have an account? </button>
         {/if}
     </div>
 </div>
@@ -82,8 +115,11 @@
     h2 {
         display: inline;
     }
-    a {
+    .option {
         float: right;
+        font-size: 14px;
+        color: var(--accent-color);
+        background-color: var(--background-accent);
     }
     input {
         width: 300px;
@@ -103,7 +139,7 @@
         -webkit-text-fill-color: white;
         -webkit-box-shadow: 0 0 0px 40rem #1b1c1c inset;
     }
-    button {
+    .button {
         width: 325px;
         color: white;
         font-size: 18px;
@@ -111,7 +147,7 @@
         margin-bottom: 15px;
         background-color: var(--accent-color);
     }
-    button:hover {
+    .button:hover {
         background-color: var(--accent-color-darken);
     }
     .container {
@@ -129,5 +165,8 @@
         background-color: var(--background-accent);
         transform: translate(-50%, -50%);
         box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+    }
+    .inner {
+        max-width: 350px;
     }
 </style>
