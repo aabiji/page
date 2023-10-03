@@ -16,7 +16,7 @@
 <style>
     .bar {
         top: 0;
-        height: 45px;
+        height: var(--navbar-height);
         width: 100.5%;
         position: fixed;
         padding: 5px 5px;

@@ -95,11 +95,42 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 	setCookie(w, r, USERID, user.Id)
 }
 
+// POST /user/remove
+//
+// Request payload:
+// Cookie with name set to "userId" and value set to the user's id.
+//
+// Response: Empty json reponse.
+//
+// Remove all rows in the Users table and the UserBooks table where
+// the "UserId" field matches the user id sent in the request cookie.
+func DeleteAccount(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie(USERID)
+	if err != nil {
+		respondWithError(w, BAD_CLIENT_REQUEST)
+		return
+	}
+
+	usersDelete := "DELETE FROM Users WHERE UserId=$1;"
+	if err := database.Exec(usersDelete, c.Value); err != nil {
+		respondWithError(w, SERVER_ERROR)
+		return
+	}
+
+	booksDelete := "DELETE FROM UserBooks WHERE UserId=$1;"
+	if err := database.Exec(booksDelete, c.Value); err != nil {
+		respondWithError(w, SERVER_ERROR)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{})
+}
+
 // POST /user/book/upload
 //
 // Request payload:
 // Multipart form data with field "file".
-// Cookie with name USERID and value set to the user's id.
+// Cookie with name set to "userId" and value set to the user's id.
 //
 // Response: {"BookId": ""}
 //
@@ -131,7 +162,7 @@ func UserUploadEpub(w http.ResponseWriter, r *http.Request) {
 
 // GET /user/book/get/{id}
 //
-// Request payload: Cookie with name USERID and value set to the user's id.
+// Request payload: Cookie with name set to "userId" and value set to the user's id.
 //
 // Response: {"CurrentPage": "", "ScrollOffsets": ""}
 //

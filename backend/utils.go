@@ -30,9 +30,7 @@ func respondWithError(w http.ResponseWriter, err string) {
 func setCookie(w http.ResponseWriter, r *http.Request, name, value string) {
 	cookie := http.Cookie{Name: name, Value: value, Path: "/", HttpOnly: false}
 	http.SetCookie(w, &cookie)
-	// Empty json response
-	response := map[string]string{}
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(map[string]string{})
 }
 
 // Get json payload from the body of a POST request.

@@ -73,3 +73,7 @@ export function cacheBook(id: number, info: object) {
     bookIds.push(id);
     localStorage.setItem(BooksKey, JSON.stringify(bookIds));
 }
+
+export function removeCookie(name: string) {
+    document.cookie = `${name}=; Max-Age=-99999999;`;
+}

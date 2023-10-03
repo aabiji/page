@@ -38,16 +38,22 @@ func setStorageDirectories() {
 	FILE_UPLOAD_DIRECTORY = uploadDir
 }
 
-func main() {
-	setStorageDirectories()
-
-	router := mux.NewRouter()
+func mapEndpoints(router *mux.Router) {
 	router.HandleFunc("/user/login", AuthAccount).Methods("POST")
 	router.HandleFunc("/user/create", CreateAccount).Methods("POST")
+	router.HandleFunc("/user/delete", DeleteAccount).Methods("POST")
+
 	router.HandleFunc("/user/book/upload", UserUploadEpub).Methods("POST")
 	router.HandleFunc("/user/book/get/{id}", GetUserBookInfo).Methods("GET")
 
 	router.HandleFunc("/book/get/{id}", GetBook).Methods("GET")
+}
+
+func main() {
+	router := mux.NewRouter()
+	mapEndpoints(router)
+
+	setStorageDirectories()
 	ServeFiles(router)
 
 	addr := "localhost:8080"

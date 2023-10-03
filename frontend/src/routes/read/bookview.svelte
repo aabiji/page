@@ -92,7 +92,7 @@
     .container {
         width: 100%;
         position: fixed;
-        margin-top: 45px;
+        margin-top: var(--navbar-height);
         display: flex;
         align-items: center;
         justify-content: center;

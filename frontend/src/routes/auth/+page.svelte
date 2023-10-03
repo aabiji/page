@@ -38,7 +38,7 @@
             authError = "Please fill out all form fields.";
         } else if (!isValidEmail()) {
             authError = "Please enter a valid email address.";
-        } else if (!isSafePassword()) {
+        } else if (!isLogin && !isSafePassword()) {
             authError = "Password must be at least 8 characters long and must contain 1 special character.";
         } else if (!isLogin && authInfo.password != authInfo.confirm) {
             authError = "Password and repeated password must match.";

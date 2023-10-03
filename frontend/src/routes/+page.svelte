@@ -48,6 +48,18 @@
         });
     }
 
+    // Drap and drop files
+    const disableDrag = (event: DragEvent) => event.preventDefault();
+    function dropFile(event: DragEvent) {
+        event.preventDefault();
+        let files = event.dataTransfer?.files;
+        if (files == undefined) return;
+        for (let i = 0; i < files.length; i++) {
+            let file = files[i];
+            console.log(file);
+        }
+    }
+
     onMount(() => {
         utils.redirectIfNotAuth();
         loadBooks(utils.cacheGet(utils.BooksKey));
@@ -55,12 +67,25 @@
 </script>
 
 <Navbar />
+
+<dialog open>
+    <h1> Upload a book </h1>
+    <input on:change={uploadFile} bind:this={fileInput} type="file" style="display: none;">
+    <button on:click={() => fileInput.click()}> Upload book </button>
+    <div class="drop" on:drop={dropFile} on:dragover={disableDrag}>
+        <p> drop a file here </p>
+    </div>
+</dialog>
+
 <div class="container">
     <div class="top">
         <h1> Your books </h1>
         <input on:change={uploadFile} bind:this={fileInput} type="file" style="display: none;">
         <button on:click={() => fileInput.click()}> Upload book </button>
     </div>
+    {#if $books.length == 0}
+        <p> Looks like you don't have any books yet! </p>
+    {/if}
     <div class="collection">
         {#each $books as b}
             <Book cover={b.cover} title={b.title} id={b.id} />
@@ -81,7 +106,8 @@
         background-color: var(--accent-color-darken);
     }
     .container {
-        margin-top: 65px;
+        padding: 10px;
+        margin-top: var(--navbar-height);
     }
     .top * {
         display: inline;
@@ -93,5 +119,18 @@
         gap: 30px;
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+    }
+
+    dialog {
+        width: 300px;
+        height: 300px;
+        text-align: center;
+        position: absolute;
+    }
+
+    .drop {
+        height: 200px;
+        background-color: red;
+        border: 3px dashed black;
     }
 </style>
