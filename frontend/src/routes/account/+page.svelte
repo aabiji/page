@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import * as utils from "$lib/utils";
-    import Navbar from "../navbar.svelte";
+    import Navbar from "../../components/navbar.svelte";
 
     function deleteAccount() {
         let url = `${utils.backendOrigin}/user/delete`;

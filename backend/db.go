@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"reflect"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type User struct {
@@ -40,7 +41,7 @@ func NewDatabase() DB {
 	createUsers := `
     CREATE TABLE IF NOT EXISTS Users (
         UserId serial PRIMARY KEY,
-        Email text NOT NULL,
+        Email text UNIQUE NOT NULL,
         Password text NOT NULL
     );`
 	if _, err := db.conns.Exec(db.context, createUsers); err != nil {
@@ -50,6 +51,7 @@ func NewDatabase() DB {
 	createBooks := `
     CREATE TABLE IF NOT EXISTS Books (
         BookId serial PRIMARY KEY,
+		Title text NOT NULL,
         CoverImagePath text NOT NULL,
         Files text[] NOT NULL,
         TableOfContents jsonb[] NOT NULL,

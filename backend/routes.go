@@ -15,8 +15,9 @@ const (
 	USERID             = "userId"
 	NOT_FOUND          = "Entries not found"
 	BAD_CLIENT_REQUEST = "Bad client request"
-	SERVER_ERROR       = "Internal server error. Please try again"
+	INTERNAL_ERROR     = "Internal server error. Please try again"
 	DUPLICATE_ACCOUNT  = "Account already exists. Create a new one with a different email."
+	DUPLICATE_BOOK     = "Book is already in the user's collection."
 	ACCOUNT_NOT_FOUND  = "Account not found. Forgot your password?"
 )
 
@@ -53,7 +54,7 @@ func AuthAccount(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, ACCOUNT_NOT_FOUND)
 		return
 	} else if err != nil {
-		respondWithError(w, SERVER_ERROR)
+		respondWithError(w, INTERNAL_ERROR)
 		return
 	}
 
@@ -88,7 +89,7 @@ func CreateAccount(w http.ResponseWriter, r *http.Request) {
 	sql = "INSERT INTO Users (Email, Password) VALUES ($1,$2) RETURNING UserId;"
 	err = database.ExecScan(sql, []any{user.Email, user.Password}, &user.Id)
 	if err != nil {
-		respondWithError(w, SERVER_ERROR)
+		respondWithError(w, INTERNAL_ERROR)
 		return
 	}
 
@@ -113,13 +114,13 @@ func DeleteAccount(w http.ResponseWriter, r *http.Request) {
 
 	usersDelete := "DELETE FROM Users WHERE UserId=$1;"
 	if err := database.Exec(usersDelete, c.Value); err != nil {
-		respondWithError(w, SERVER_ERROR)
+		respondWithError(w, INTERNAL_ERROR)
 		return
 	}
 
 	booksDelete := "DELETE FROM UserBooks WHERE UserId=$1;"
 	if err := database.Exec(booksDelete, c.Value); err != nil {
-		respondWithError(w, SERVER_ERROR)
+		respondWithError(w, INTERNAL_ERROR)
 		return
 	}
 
@@ -149,10 +150,16 @@ func UserUploadEpub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sql := "SELECT UserId FROM UserBooks WHERE BookId=$1;"
+	if _, err := database.Read(sql, []any{bookId}, []any{&c.Value}); err == nil {
+		respondWithError(w, DUPLICATE_BOOK)
+		return
+	}
+
 	scrollOffsets := make([]int, pageCount)
-	sql := "INSERT INTO UserBooks (UserId, BookId, CurrentPage, ScrollOffsets) VALUES ($1,$2,$3,$4);"
+	sql = "INSERT INTO UserBooks (UserId, BookId, CurrentPage, ScrollOffsets) VALUES ($1,$2,$3,$4);"
 	if err := database.Exec(sql, c.Value, bookId, 0, scrollOffsets); err != nil {
-		respondWithError(w, SERVER_ERROR)
+		respondWithError(w, INTERNAL_ERROR)
 		return
 	}
 
@@ -180,7 +187,7 @@ func GetUserBookInfo(w http.ResponseWriter, r *http.Request) {
 	sql := "SELECT CurrentPage, ScrollOffsets FROM UserBooks WHERE UserId=$1 AND BookId=$2;"
 	_, err = database.Read(sql, []any{c.Value, bookId}, []any{&currentPage, &scrollOffsets})
 	if err != nil {
-		respondWithError(w, SERVER_ERROR)
+		respondWithError(w, INTERNAL_ERROR)
 		return
 	}
 
@@ -226,19 +233,19 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 	sql := "SELECT CoverImagePath, Files, TableOfContents, Info FROM Books WHERE BookId=$1;"
 	_, err := database.Read(sql, []any{bookId}, []any{&imgPath, &files, &toc, &info})
 	if err != nil {
-		respondWithError(w, SERVER_ERROR)
+		respondWithError(w, INTERNAL_ERROR)
 		return
 	}
 
 	var tocObj []epub.Section
 	if err := json.Unmarshal(toc, &tocObj); err != nil {
-		respondWithError(w, SERVER_ERROR)
+		respondWithError(w, INTERNAL_ERROR)
 		return
 	}
 
 	var infoObj epub.Metadata
 	if err := json.Unmarshal(info, &infoObj); err != nil {
-		respondWithError(w, SERVER_ERROR)
+		respondWithError(w, INTERNAL_ERROR)
 		return
 	}
 

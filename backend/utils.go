@@ -15,7 +15,7 @@ import (
 // Add json containing an error value to the http response and set the appropriate response code.
 func respondWithError(w http.ResponseWriter, err string) {
 	errorCode := http.StatusOK
-	if err == SERVER_ERROR {
+	if err == INTERNAL_ERROR {
 		errorCode = http.StatusInternalServerError
 	} else if err == BAD_CLIENT_REQUEST {
 		errorCode = http.StatusBadRequest
@@ -62,12 +62,12 @@ func receiveFile(w http.ResponseWriter, r *http.Request) (string, error) {
 	filename := filepath.Join(FILE_UPLOAD_DIRECTORY, handler.Filename)
 	localFile, err := os.Create(filename)
 	if err != nil {
-		return "", errors.New(SERVER_ERROR)
+		return "", errors.New(INTERNAL_ERROR)
 	}
 	defer localFile.Close()
 
 	if _, err := io.Copy(localFile, file); err != nil {
-		return "", errors.New(SERVER_ERROR)
+		return "", errors.New(INTERNAL_ERROR)
 	}
 
 	return filename, nil
@@ -91,15 +91,25 @@ func receiveEpub(w http.ResponseWriter, r *http.Request) (int, int, error) {
 	e, err := epub.New(filename)
 	if err != nil {
 		os.Remove(filename)
-		return 0, 0, errors.New(SERVER_ERROR)
+		return 0, 0, errors.New(INTERNAL_ERROR)
 	}
 
 	id, err := insertBook(e)
 	if err != nil {
-		return 0, 0, errors.New(SERVER_ERROR)
+		return 0, 0, errors.New(INTERNAL_ERROR)
 	}
 
 	return len(e.Files), id, nil
+}
+
+// Get the BookId of a book with a given title
+func getBook(title string) (int, error) {
+	var id int
+	sql := "SELECT BookId FROM Books WHERE Title=$1;"
+	if _, err := database.Read(sql, []any{title}, []any{&id}); err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 // Insert a new entry to the Books table in the database
@@ -107,20 +117,25 @@ func receiveEpub(w http.ResponseWriter, r *http.Request) (int, int, error) {
 func insertBook(e epub.Epub) (int, error) {
 	info, err := json.Marshal(e.Info)
 	if err != nil {
-		return 0, errors.New(SERVER_ERROR)
+		return 0, errors.New(INTERNAL_ERROR)
 	}
 	toc, err := json.Marshal(e.TableOfContents)
 	if err != nil {
-		return 0, errors.New(SERVER_ERROR)
+		return 0, errors.New(INTERNAL_ERROR)
 	}
 
 	var id int
+	id, err = getBook(e.Info.Title)
+	if err == nil { // A book with the same title has already been inserted.
+		return id, nil
+	}
+
 	sql := `
     INSERT INTO Books 
-    (CoverImagePath, Files, TableOfContents, Info) 
-    VALUES ($1,$2,$3,$4)
+    (Title, CoverImagePath, Files, TableOfContents, Info) 
+    VALUES ($1, $2, $3, $4, $5)
     RETURNING BookId;`
-	insert := []any{e.CoverImagePath, e.Files, toc, info}
+	insert := []any{e.Info.Title, e.CoverImagePath, e.Files, toc, info}
 	if err := database.ExecScan(sql, insert, &id); err != nil {
 		return 0, err
 	}
