@@ -29,7 +29,7 @@
 
     function removeBook(id: number) {
         let url = `${utils.backendOrigin}/user/book/remove/${id}`;
-        utils.callApi(url, "DELETE").then((response) => {
+        utils.callApi(url, "POST").then((response) => {
             if (utils.serverError in response) {
                 console.log(response);
                 return;
@@ -55,17 +55,41 @@
         {#each $books as b}
             <div class="book">
                 <Book cover={b.cover} title={b.title} id={b.id} />
-                <button on:click={() => removeBook(b.id)}> x </button>
+                <button on:click={() => removeBook(b.id)}> Remove book </button>
             </div>
         {/each}
     </div>
 </div>
 
 <style>
+    .book {
+        text-align: center;
+    }
+
+    .book button {
+        padding: 8px 8px;
+        color: white;
+        border: none;
+        font-size: 14px;
+        background-color: red;
+        margin-bottom: 15px;
+        display: none;
+        margin-left: 12px;
+    }
+
+    .book button:hover {
+        background-color: darkred;
+    }
+
+    .book:hover button {
+        display: block;
+    }
+
     .container {
         padding: 10px;
         margin-top: var(--navbar-height);
     }
+
     .collection {
         gap: 30px;
         display: grid;

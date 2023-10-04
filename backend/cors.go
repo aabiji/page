@@ -18,12 +18,13 @@ func AllowRequests(allowedOrigin string, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("origin")
 		allowedOrigin := origin == allowedOrigin
+		allowHeader := "Content-Type, withCredentials, Authorization"
 
 		if allowedOrigin {
 			w.Header().Add("Origin", "Vary")
 			w.Header().Add("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
-			w.Header().Add("Access-Control-Allow-Headers", "Content-Type, withCredentials, Authorization")
+			w.Header().Add("Access-Control-Allow-Headers", allowHeader)
 		}
 
 		if isPreflightRequest(r) {
@@ -34,7 +35,6 @@ func AllowRequests(allowedOrigin string, handler http.Handler) http.Handler {
 			}
 		}
 
-		w.WriteHeader(http.StatusOK)
 		handler.ServeHTTP(w, r)
 	})
 }

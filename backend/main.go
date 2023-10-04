@@ -45,7 +45,7 @@ func mapEndpoints(router *mux.Router) {
 
 	router.HandleFunc("/user/book/upload", UserUploadEpub).Methods("POST")
 	router.HandleFunc("/user/book/get/{id}", GetUserBookInfo).Methods("GET")
-	router.HandleFunc("/user/book/remove/{id}", UserRemoveBook).Methods("DELETE")
+	router.HandleFunc("/user/book/remove/{id}", UserRemoveBook).Methods("POST")
 
 	router.HandleFunc("/book/get/{id}", GetBook).Methods("GET")
 }
