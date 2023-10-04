@@ -17,7 +17,7 @@
         height: 190px;
     }
     div {
-        width: 115px;
+        width: 125px;
         cursor: pointer;
         text-align: center;
         height: fit-content;

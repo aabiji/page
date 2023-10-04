@@ -4,7 +4,6 @@
  
     import Book from "../components/book.svelte";
     import Navbar from "../components/navbar.svelte";
-    import Upload from "../components/upload.svelte";
     import * as utils from "$lib/utils";
  
     interface BookDisplayInfo {
@@ -46,7 +45,6 @@
         {/each}
     </div>
 </div>
-<Upload />
 
 <style>
     .container {
