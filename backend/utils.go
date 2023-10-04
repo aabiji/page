@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/aabiji/page/backend/epub"
 )
@@ -28,7 +29,8 @@ func respondWithError(w http.ResponseWriter, err string) {
 
 // Add cookie header to the http response sent to the client.
 func setCookie(w http.ResponseWriter, r *http.Request, name, value string) {
-	cookie := http.Cookie{Name: name, Value: value, Path: "/", HttpOnly: false}
+	future := time.Now().Add(100000 * time.Hour)
+	cookie := http.Cookie{Name: name, Value: value, Path: "/", HttpOnly: false, Expires: future}
 	http.SetCookie(w, &cookie)
 	json.NewEncoder(w).Encode(map[string]string{})
 }

@@ -5,4 +5,5 @@ cd backend &&
 go build &&
 ./page &
 cd frontend &&
-bun run dev &
+npm run build &&
+npm run preview
