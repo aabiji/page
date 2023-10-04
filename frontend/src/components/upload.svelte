@@ -52,15 +52,14 @@
         });
     }
 
-    // TODO: improve the accessibilty of <div class="drop"></div>
-    const doNothing = () => {};
+    const openFileDialog = () => fileInput.click();
 </script>
 
 <dialog open>
     <h1> Upload a book </h1>
     <input on:change={uploadSelectedFile} bind:this={fileInput} accept=".epub" type="file" style="display: none;">
     <div tabindex=-1 aria-label="Click, Drop, and Drag Over Element" role="button" class="drop" 
-         on:keypress={doNothing} on:click={() => fileInput.click()} on:drop={uploadDroppedFile} on:dragover={disableDrag}>
+         on:keypress={openFileDialog} on:click={openFileDialog} on:drop={uploadDroppedFile} on:dragover={disableDrag}>
         <p> Click me! </p>
         <p> OR </p>
         <p> Drag your epub files here. </p>

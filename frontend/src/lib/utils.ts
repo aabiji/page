@@ -61,6 +61,10 @@ export function coverImagePath(file: string): string {
     return file == "" ? "default-cover-image.png" : staticFileUrl(file);
 }
 
+export function removeCookie(name: string) {
+    document.cookie = `${name}=; Max-Age=-99999999;`;
+}
+
 export function cacheGet(key: string): any {
     let obj = localStorage.getItem(key);
     let type = key == BooksKey ? [] : {};
@@ -74,6 +78,9 @@ export function cacheBook(id: number, info: object) {
     localStorage.setItem(BooksKey, JSON.stringify(bookIds));
 }
 
-export function removeCookie(name: string) {
-    document.cookie = `${name}=; Max-Age=-99999999;`;
+export function removeBook(id: number) {
+    localStorage.removeItem(BookKey(id));
+    let books = cacheGet(BooksKey) as number[];
+    books = books.filter((n) => n != id);
+    localStorage.setItem(BooksKey, JSON.stringify(books)); 
 }

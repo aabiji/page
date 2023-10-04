@@ -20,12 +20,8 @@ TODO:
 - better epub parsing
 - Call backend api to update user book info when on dom page event
 - fix image url bug from atomic habits
-- basic user settings page
 - dynamic ui css
-- the ability to delete account
 - long duration session cookies
-- the ability to sign out
-- check for duplicate books when uploading
 
 This project is currently still actively being developped.
 ![Current app state](screenshot.png)

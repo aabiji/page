@@ -167,6 +167,30 @@ func UserUploadEpub(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+// DELETE /user/book/remove/{id}
+//
+// Request payload: Cookie with name set to "userId" and value set to the user's id.
+//
+// Response: Empty json response.
+//
+// Remove a book by id from the user's collection.
+func UserRemoveBook(w http.ResponseWriter, r *http.Request) {
+	bookId := mux.Vars(r)["id"]
+	c, err := r.Cookie(USERID)
+	if err != nil {
+		respondWithError(w, BAD_CLIENT_REQUEST)
+		return
+	}
+
+	sql := "DELETE FROM UserBooks WHERE BookId=$1 AND UserId=$2;"
+	if err := database.Exec(sql, bookId, c.Value); err != nil {
+		respondWithError(w, INTERNAL_ERROR)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{})
+}
+
 // GET /user/book/get/{id}
 //
 // Request payload: Cookie with name set to "userId" and value set to the user's id.

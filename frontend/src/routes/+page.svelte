@@ -27,6 +27,18 @@
         }
     }
 
+    function removeBook(id: number) {
+        let url = `${utils.backendOrigin}/user/book/remove/${id}`;
+        utils.callApi(url, "DELETE").then((response) => {
+            if (utils.serverError in response) {
+                console.log(response);
+                return;
+            }
+            utils.removeBook(id);
+            loadBooks(utils.cacheGet(utils.BooksKey));
+        });
+    }
+
     onMount(() => {
         utils.redirectIfNotAuth();
         loadBooks(utils.cacheGet(utils.BooksKey));
@@ -41,7 +53,10 @@
     {/if}
     <div class="collection">
         {#each $books as b}
-            <Book cover={b.cover} title={b.title} id={b.id} />
+            <div class="book">
+                <Book cover={b.cover} title={b.title} id={b.id} />
+                <button on:click={() => removeBook(b.id)}> x </button>
+            </div>
         {/each}
     </div>
 </div>

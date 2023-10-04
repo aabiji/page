@@ -34,6 +34,7 @@ func AllowRequests(allowedOrigin string, handler http.Handler) http.Handler {
 			}
 		}
 
+		w.WriteHeader(http.StatusOK)
 		handler.ServeHTTP(w, r)
 	})
 }
